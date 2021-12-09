@@ -55,7 +55,7 @@ class Damier:
         self.player2.toggle_current()
 
     def get_empty_position_list(self):
-        return list(filter(lambda position: self.get_cell(position).is_empty(),Damier.position_list))
+        return list(filter(lambda position: self.get_cell(position).is_empty(), Damier.position_list))
 
     def set_player_for_cell(self, position):
         cell = self.get_cell(position)
