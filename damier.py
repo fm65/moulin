@@ -32,10 +32,17 @@ class Damier:
         self.phase2 = False
 
     def get_phase(self):
-        return self.phase
+        if self.phase1 is True:
+            return self.phase1
+        return self.phase2
 
-    def set_phase(self, new_phase):
-        self.phase = new_phase
+    def switch_phase(self):
+        if self.phase1 is True:
+            self.phase1 = False
+            self.phase2 = True
+        else:
+            self.phase1 = True
+            self.phase2 = False
 
     def get_current_player(self):
         return self.player1 if self.player1.is_current else self.player2
