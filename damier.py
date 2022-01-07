@@ -2,17 +2,6 @@ from player import *
 from cell import *
 import pickle
 
-NB_PION = 18
-
-list_of_position = [(1, 1), (1, 4), (1, 7),
-                        (2, 2), (2, 4), (2, 6),
-                        (3, 3), (3, 4), (3, 5),
-                        (4, 1), (4, 2), (4, 3),
-                        (4, 5), (4, 6), (4, 7),
-                        (5, 3), (5, 4), (5, 5),
-                        (6, 2), (6, 4), (6, 6),
-                        (7, 1), (7, 4), (7, 7)]
-
 class Damier:
 
     list_of_moulin = [[(1, 1), (1, 4), (1, 7)], [(2, 2), (2, 4), (2, 6)], [(3, 3), (3, 4), (3, 5)],
@@ -22,7 +11,7 @@ class Damier:
                       [(5, 4), (6, 4), (7, 4)], [(3, 5), (4, 5), (5, 5)], [(2, 6), (4, 6), (6, 6)],
                       [(1, 7), (4, 7), (7, 7)]]
     
-    list_of_position = [(1, 1), (1, 4), (1, 7),
+    position_list = [(1, 1), (1, 4), (1, 7),
                         (2, 2), (2, 4), (2, 6),
                         (3, 3), (3, 4), (3, 5),
                         (4, 1), (4, 2), (4, 3),
@@ -33,10 +22,10 @@ class Damier:
 
     def __init__(self):
         self.cell_list = {}
-        for position in Damier.list_of_position:
+        for position in Damier.position_list:
             self.cell_list[position] = Cell(position, self)
-        self.player1 = Player("Rouge", self)
-        self.player2 = Player("Bleu", self)
+        self.player1 = Player("blue", self)
+        self.player2 = Player("red", self)
         self.player1.set_current(True)
         self.phase1 = True
         self.phase2 = False
@@ -76,6 +65,9 @@ class Damier:
 
     def get_cell(self, position) -> Cell:
         return self.cell_list[position]
+
+    def set_cell(self, position):
+        self.cell_list[position] = self.get_current_player()
 
     def get_cell_list_for_player(self, player):
         return list(filter(lambda cell: cell.get_player() == player, self.cell_list.values()))
@@ -158,3 +150,11 @@ class Damier:
         choice = input("Si vous voulez sauvegarder votre partie entrer o :")
         if choice == "o":
             self.save_state()
+
+    def is_your_turn_to_play(self, color):
+        if color == self.get_current_player().color:
+            print("C'est à toi de jouer")
+            return True
+        print("Ce n'est pas à toi de jouer")
+        return False
+

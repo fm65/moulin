@@ -3,9 +3,12 @@ from tkinter import Canvas, ttk
 from tkinter import messagebox
 import random
 
+
 import damier
 
 NB_PION = 18
+field = damier.Damier()
+
 
 class Moulin(tk.Frame):
     def __init__(self, parent, bg="white", *args, **kwargs):
@@ -32,6 +35,8 @@ class Moulin(tk.Frame):
         self.count_click = 0
         
         self.selected = None
+
+        self.is_moulin = False
         
         self.sa = StatusArea(self, bg=self.sbg, width=self.width-200, height=self.height, sa_pbg=self.sa_pbg)
         self.ga = GameArea(  self, bg=self.gbg, width=self.width, height=self.height)
@@ -52,7 +57,7 @@ class Moulin(tk.Frame):
         self.dcoords_dict = {}
         self.pcoords_dict = {}
         
-        for k,v in zip(self.ga_coords, damier.list_of_position):
+        for k,v in zip(self.ga_coords, field.position_list):
             self.dcoords_dict[str(k)] = v
             
         i,j = 1,1
@@ -84,19 +89,50 @@ class Moulin(tk.Frame):
                 print("PHASE 1 | ")#, self.pcoords_dict[str(id)])
                 
                 if self.count_click == 0 and res1[0] and \
-                   self.sa.canvas.itemcget(res1[1], "fill") != self.sa_pbg:
+                   self.sa.canvas.itemcget(res1[1], "fill") != self.sa_pbg and not self.is_moulin:
                     self.selected =  self.sa.canvas.itemcget(res1[1], "fill")
                     self.count_click +=1
                     self.id_to_delete = res1[1]
-                
-                elif self.selected != None and self.count_click == 1 and res2[0]:
+                    self.selected_color = self.sa.canvas.itemcget(res1[1], "fill")
+
+
+                elif self.selected != None and self.count_click == 1 and \
+                     res2[0] and field.is_your_turn_to_play(self.selected_color) and \
+                        (self.ga.canvas.itemcget(res2[1], "fill") == "white" or self.is_moulin):
                     print("#count_click:", self.count_click, " | ", "#selected:", self.selected,  " | ", "#id:", res2[1])
                     print("POUSED | ", self.dcoords_dict[str(res2[1])], " | ID TO DEL:", self.id_to_delete)
+                    print(self.selected_color)
+
+                    coords = self.dcoords_dict[str(res2[1])]
+                    cell_selected = field.get_cell(coords)
+                    cell_selected.set_player(field.get_current_player())
+                    pcolor = "bleu" if field.get_current_player().get_color() == "blue" else "rouge"
+                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+
+                    if field.can_kill(cell_selected) and not self.is_moulin:
+                        self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
+                        self.is_moulin = True
+                        self.count_click = 1
+                    else:
+                        self.ga.canvas.itemconfig(res2[1], fill="white", outline="black")
+                        self.is_moulin = False
+                        self.count_click = 0
+
+                    if not  self.is_moulin: field.switch_player()
+
                     self.ga.canvas.itemconfig(res2[1], fill=self.selected, outline=self.selected)
                     self.sa.canvas.itemconfig(self.id_to_delete, fill=self.sa_pbg, outline=self.sa_pbg)
-                    self.count_click = 0
+                    #self.count_click = 0
                     self.selected = None
-                else: print("***WARNING: invalid click")
+                else:
+                    print("***WARNING: invalid click")
+                    print(self.selected_color)
+                    print(field.is_your_turn_to_play(self.selected_color))
+                    print(self.ga.canvas.itemcget(res2[1], "fill") == "white" or self.is_moulin)
+                    print(res2[0])
+                    print(self.count_click == 1)
+                    print(self.selected != None)
+                    self.count_click = 0
         
         # phase 2
         elif self.is_phase_two:
@@ -430,7 +466,7 @@ class StatusArea(tk.Frame):
         self.spion.set(1)
 
         self.status_tour = tk.StringVar()
-        self.status_tour.set("C'est au tour de Joueur 1")
+        self.status_tour.set("C'est au tour de Joueur bleu")
 
         self.status_phase = tk.StringVar()
         self.status_phase.set("Première Phase")
@@ -466,7 +502,7 @@ class StatusArea(tk.Frame):
                               foreground="black", background=bg,
                               font='Terminal 13 bold')
 
-        self.label_status = tk.Label(self.frame1, textvariable=self.status_phase,
+        self.label_status = tk.Label(self.frame1, textvariable=self.status_tour,
                               foreground=self.color1, background=bg,
                               font='Terminal 10 bold')
 
