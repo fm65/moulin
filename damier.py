@@ -122,9 +122,16 @@ class Damier:
         return False
 
     def can_kill(self, cell):
-        if (self.is_in_moulins(cell)) and not (self.has_all_pion_in_moulins(self.get_not_current_player())):
+        if self.is_in_moulins(cell):
             return True
         return False
+
+    def can_get_killed(self, cell):
+        if self.has_all_pion_in_moulins(cell.get_player()):
+            return True
+        if self.is_in_moulins(cell):
+            return False
+        return True
 
     def save_state(self):
         with open("Sauvegarde_du_moulin", "wb") as f:

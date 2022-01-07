@@ -116,9 +116,8 @@ while nb_turn != number_of_pion_needed and field.phase1 is True:
         continue
     chosen_cell.set_player(field.get_current_player())
     if nb_turn == number_of_pion_needed:
-        field.phase1 = False
-        field.phase2 = True
-    if not field.can_kill(chosen_cell) or field.has_all_pion_in_moulins(field.get_not_current_player()):
+        field.switch_phase()
+    if not field.can_kill(chosen_cell):
         field.switch_player()
         field.want_to_save()
         continue
