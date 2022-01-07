@@ -3,26 +3,38 @@ from tkinter import Canvas, ttk
 from tkinter import messagebox
 import random
 
+import damier
+
+NB_PION = 18
+
 class Moulin(tk.Frame):
     def __init__(self, parent, bg="white", *args, **kwargs):
         tk.Frame.__init__(self, parent, bg=bg, *args, **kwargs)
         self.parent  = parent
-
-        self.init_tag = "FREE_CASE"
         
-        self.width  = 1687 #self.parent.winfo_screenwidth()  // 4
-        self.height = 812  #self.parent.winfo_screenheight() // 6
+        self.width  = 1212
+        self.height = 700
+        
+        self.gbg = "white"
+        self.sbg = "white"
+        self.sa_pbg = "#EFEFEF"
         
         self.start_page()
         self.parent.geometry(f'{self.width}x{self.height}')
-        self.parent.resizable(1, 0)
+        self.parent.resizable(0, 0)
         
-        self.mbg = "#474747"
-        self.gbg = 'ivory'
-        self.sbg = "white"
+        self.is_phase_one = tk.BooleanVar()
+        self.is_phase_one.set(False)
         
-        self.status_area = StatusArea(self, bg=self.sbg, width=self.width//2, height=self.height)
-        self.game_area = GameArea(self, bg=self.gbg,  width=self.width//2, height=self.height)
+        self.is_phase_two = tk.BooleanVar()
+        self.is_phase_two.set(False)
+        
+        self.count_click = 0
+        
+        self.selected = None
+        
+        self.sa = StatusArea(self, bg=self.sbg, width=self.width-200, height=self.height, sa_pbg=self.sa_pbg)
+        self.ga = GameArea(  self, bg=self.gbg, width=self.width, height=self.height)
         
         self.parent.attributes('-fullscreen', False)
         self.full_screen_state = False
@@ -30,19 +42,84 @@ class Moulin(tk.Frame):
         self.parent.bind("<F2>", self.start_page)
         self.parent.bind("<F11>", self.toggle_full_screen)
         self.parent.bind("<Escape>", self.quit_full_screen)
-
+        self.parent.bind("<Button-1>", self.on_click)
+        
+        self.ga_coords = list(range(self.ga.c11, self.ga.c77+1))
+        self.sa_coords = list(range(self.sa.p11, self.sa.p29+1))
+                
+        self.list_of_pions = list(range(1, NB_PION+1))
+                                  
+        self.dcoords_dict = {}
+        self.pcoords_dict = {}
+        
+        for k,v in zip(self.ga_coords, damier.list_of_position):
+            self.dcoords_dict[str(k)] = v
+            
+        i,j = 1,1
+        for k,v in zip(self.sa_coords, self.list_of_pions):
+            if v == 10: i = 2; j = 1
+            self.pcoords_dict[str(k)] = "p" + str(i) + str(j)
+            j +=1
+        
         self.show_frame()
+        
+    def check_coords(self, canvas=None, coords=None, event=None):
+        for i in coords:
+            x0, y0, x1, y1 = canvas.coords(i)
+            if x0 <= event.x <= x1 and y0 <= event.y <= y1:
+                return True, i
+        return False, None
+        
+    def on_click(self, event):
+        
+        res1 = self.check_coords(self.sa.canvas, self.sa_coords, event)
+        res2 = self.check_coords(self.ga.canvas, self.ga_coords, event)
+        
+        res = res1 if res1[0] else res2
+        
+        # phase 1
+        if self.is_phase_one:            
+            if not res[1]: print("***WARNING: invalid click")
+            else:
+                print("PHASE 1 | ")#, self.pcoords_dict[str(id)])
+                
+                if self.count_click == 0 and res1[0] and \
+                   self.sa.canvas.itemcget(res1[1], "fill") != self.sa_pbg:
+                    self.selected =  self.sa.canvas.itemcget(res1[1], "fill")
+                    self.count_click +=1
+                    self.id_to_delete = res1[1]
+                
+                elif self.selected != None and self.count_click == 1 and res2[0]:
+                    print("#count_click:", self.count_click, " | ", "#selected:", self.selected,  " | ", "#id:", res2[1])
+                    print("POUSED | ", self.dcoords_dict[str(res2[1])], " | ID TO DEL:", self.id_to_delete)
+                    self.ga.canvas.itemconfig(res2[1], fill=self.selected, outline=self.selected)
+                    self.sa.canvas.itemconfig(self.id_to_delete, fill=self.sa_pbg, outline=self.sa_pbg)
+                    self.count_click = 0
+                    self.selected = None
+                else: print("***WARNING: invalid click")
+        
+        # phase 2
+        elif self.is_phase_two:
+            res = self.check_coords(self.ga.canvas, self.ga_coords, event)
+            id = res[1]
+            if not id: pass
+            else:
+                print("PHASE 2 | ", self.dcoords_dict[str(id)])
+                self.ga.canvas.itemconfig(id, fill='blue', outline='blue')
+        
+        else: pass
+            
    
     def start_page(self, event=None):
         StartPage(self, width=self.width, height=self.height)
         
     def show_frame(self):
-        self.rowconfigure(0, weight=1, minsize=812)
-        self.columnconfigure(0, weight=1, minsize=866)
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
-        self.game_area.grid(row=0, column=0, sticky="nswe")
-        self.status_area.grid(row=0, column=1, sticky="nswe")    
+        self.ga.grid(row=0, column=0, sticky="nswe")
+        self.sa.grid(row=0, column=1, sticky="nswe")    
     
     def toggle_full_screen(self, event):
         self.full_screen_state = not self.full_screen_state
@@ -51,12 +128,7 @@ class Moulin(tk.Frame):
     def quit_full_screen(self, event):
         self.full_screen_state = False
         self.parent.attributes("-fullscreen", self.full_screen_state)
-
-def run_moulin():
-    root = tk.Tk()
-    root.title("Moulin")
-    Moulin(root).pack(fill="both", expand=True)
-    root.mainloop()
+        
     
 class StartPage(tk.Toplevel):
     def __init__(self, parent, width=100, height=50,  bg='white', bd=5, *args, **kwargs):
@@ -108,7 +180,7 @@ class StartPage(tk.Toplevel):
                                   relief=tk.FLAT,
                                   activeforeground='white',
                                   activebackground='#3D99F4',
-                                  command=self.play)
+                                  command=self.start_play)
         
         self.btn_quit = tk.Button(self.frame3, text ='Quitter',
                                   width=self.bnt_width,
@@ -149,9 +221,9 @@ class StartPage(tk.Toplevel):
                 
         self.bind("<Button-1>", self.on_checkbutton)
         
-    def play(self):
+    def start_play(self):
+        self.parent.is_phase_one.set(True)
         self.destroy()
-        #messagebox.showinfo("Moulin", "Welcome to Moulin Game!")
         
     def show_frame(self):
         self.rowconfigure(1, weight=1)
@@ -257,432 +329,70 @@ class Menu(tk.Frame):
                      "Aussi appelé jeu du charret (en Suisse), certains lui donnent le nom médiéval de jeu de mérelles.")
 
 class GameArea(tk.Frame):
-    #count_on_resize = 0
     def __init__(self, parent, bg, width, height, *args, **kwargs):
         tk.Frame.__init__(self, parent, width=width, height=height, bg=bg, *args, **kwargs)
         self.parent = parent
         self.bg = bg
-
-        #self.bind("<Configure>", self.on_resize)
-        
         self.width  = self.winfo_reqwidth()
         self.height = self.winfo_reqheight()
 
-        self.init_color = "#595959"
-        self.init_tag = self.parent.init_tag
-
-        self.move_in_plate = tk.BooleanVar()
-        self.move_in_plate.set(False)
-
-        self.selected_pion = tk.StringVar()
-        self.selected_pion.set("")
-
-        self.sselected_pion = tk.StringVar()
-        self.sselected_pion.set("")
-
-        self.count_select = 0
+        line_color = "black"
+        oval_color = "white"
+        line_width  = 3
         
-        self.x0 = 60
-        self.y0 = 60
-        
-        self.offset1 = 100
-        self.offset2 = 2*self.offset1
+        self.canvas = tk.Canvas(self, bg=self.bg,
+                                width=self.width,
+                                height=self.height,
+                                highlightthickness=0)
+
+        # rectangle creation
+        self.canvas.create_rectangle(34,   34, 666, 666, width=line_width, fill=self.bg, outline=line_color) # big
+        self.canvas.create_rectangle(144, 144, 556, 556, width=line_width, fill=self.bg, outline=line_color) # small
                 
-        self.d = 10
-        self.csize = 25
-        self.psize = 14
-
-        self.canvas = tk.Canvas(self, bg=bg,
-                               width=self.width,
-                               height=self.height, 
-                               highlightthickness=0)
+        # line creation
+        self.canvas.create_line(34, 352, 666, 352, width=line_width, fill=line_color) # horizontal
+        self.canvas.create_line(350, 34, 350, 666, width=line_width, fill=line_color) # vertical
         
-        self.canvas.addtag_all("all")
-
+        self.canvas.create_rectangle(254, 254, 446, 446, width=line_width, fill=self.bg, outline=line_color) # small
+        
+        self.c11 = self.canvas.create_oval(22,  22, 47,  47,  width=line_width, fill=oval_color, outline=line_color)
+        self.c14 = self.canvas.create_oval(337, 22, 362, 47,  width=line_width, fill=oval_color, outline=line_color)
+        self.c17 = self.canvas.create_oval(653, 22, 678, 47,  width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c22 = self.canvas.create_oval(132, 130, 157, 155, width=line_width, fill=oval_color, outline=line_color)
+        self.c24 = self.canvas.create_oval(337, 130, 362, 155, width=line_width, fill=oval_color, outline=line_color)
+        self.c26 = self.canvas.create_oval(544, 130, 569, 155, width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c33 = self.canvas.create_oval(242, 240, 267, 265, width=line_width, fill=oval_color, outline=line_color)
+        self.c34 = self.canvas.create_oval(337, 240, 362, 265, width=line_width, fill=oval_color, outline=line_color)
+        self.c35 = self.canvas.create_oval(434, 240, 459, 265, width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c41 = self.canvas.create_oval(22,  337, 47,  362, width=line_width, fill=oval_color, outline=line_color)
+        self.c42 = self.canvas.create_oval(132, 337, 157, 362, width=line_width, fill=oval_color, outline=line_color)
+        self.c43 = self.canvas.create_oval(242, 337, 267, 362, width=line_width, fill=oval_color, outline=line_color)
+        self.c45 = self.canvas.create_oval(434, 337, 459, 362, width=line_width, fill=oval_color, outline=line_color)
+        self.c46 = self.canvas.create_oval(544, 337, 569, 362, width=line_width, fill=oval_color, outline=line_color)
+        self.c47 = self.canvas.create_oval(653, 337, 678, 362, width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c53 = self.canvas.create_oval(242, 434, 267, 459, width=line_width, fill=oval_color, outline=line_color)
+        self.c54 = self.canvas.create_oval(337, 434, 362, 459, width=line_width, fill=oval_color, outline=line_color)
+        self.c55 = self.canvas.create_oval(434, 434, 459, 459, width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c62 = self.canvas.create_oval(132, 544, 157, 569, width=line_width, fill=oval_color, outline=line_color)
+        self.c64 = self.canvas.create_oval(337, 544, 362, 569, width=line_width, fill=oval_color, outline=line_color)
+        self.c66 = self.canvas.create_oval(544, 544, 569, 569, width=line_width, fill=oval_color, outline=line_color)
+        
+        self.c71 = self.canvas.create_oval(22,  654, 47,  679, width=line_width, fill=oval_color, outline=line_color)
+        self.c74 = self.canvas.create_oval(337, 654, 362, 679, width=line_width, fill=oval_color, outline=line_color)
+        self.c77 = self.canvas.create_oval(653, 654, 678, 679, width=line_width, fill=oval_color, outline=line_color)
+        
+        # display damier
         self.canvas.pack(fill="both", expand=True)
-
-        self.draw_cross(self.x0, self.y0, self.width, self.height, self.offset1)
-                
-        self.draw_square(self.x0, self.y0, self.width, self.height)               #square 1
-        
-        self.draw_square(self.x0, self.y0, self.width, self.height, self.offset1) #square 2
-        
-        self.draw_square(self.x0, self.y0, self.width, self.height, self.offset2, fill=bg) #square 3
-        
-        self.draw_case(self.x0, self.y0, self.width, self.height, self.d, self.offset1, fill=self.init_color)
-
-        self.cases = [self.canvas11, self.canvas14, self.canvas17,
-                      self.canvas22, self.canvas24, self.canvas26,
-                      self.canvas33, self.canvas34, self.canvas35,
-                      self.canvas41, self.canvas42, self.canvas43,
-                      self.canvas45, self.canvas46, self.canvas47,
-                      self.canvas53, self.canvas54, self.canvas55,
-                      self.canvas62, self.canvas64, self.canvas66,
-                      self.canvas71, self.canvas74, self.canvas77] 
-        
-        for i in range(len(self.cases)):
-            
-            self.cases[i].tag_bind(self.init_tag, "<Enter>", lambda event, canvas=self.cases[i]: self.check_hand_enter(canvas=canvas))
-            self.cases[i].tag_bind(self.init_tag, "<Leave>", lambda event, canvas=self.cases[i]: self.check_hand_leave(canvas=canvas))
-
-            self.cases[i].tag_bind(self.parent.status_area.tag_name1, "<Enter>", lambda event, canvas=self.cases[i]: self.check_hand_enter(canvas=canvas))
-            self.cases[i].tag_bind(self.parent.status_area.tag_name1, "<Leave>", lambda event, canvas=self.cases[i]: self.check_hand_leave(canvas=canvas))
-
-            self.cases[i].tag_bind(self.parent.status_area.tag_name2, "<Enter>", lambda event, canvas=self.cases[i]: self.check_hand_enter(canvas=canvas))
-            self.cases[i].tag_bind(self.parent.status_area.tag_name2, "<Leave>", lambda event, canvas=self.cases[i]: self.check_hand_leave(canvas=canvas))
-
-            self.cases[i].bind("<Button-1>", lambda event, canvas=self.cases[i]: self.pion_click(event, canvas=canvas))
     
-    def pion_click(self, event=None, canvas=None):        
-        id = 1
-        clicked_color = canvas.itemcget(id, "fill")
-        clicked_tag   = canvas.itemcget(id, "tag").split(' ')[0]
-        
-        if self.check_case(clicked_tag) and self.parent.status_area.sa_selected_pion.get():
-            color, tag = self.parent.status_area.sa_selected_pion.get().split(' ')
-            self.move_pion(canvas, id, color, tag)
-
-        if self.move_in_plate.get():
-            clicked_pion = clicked_color + ' ' + clicked_tag + ' ' + str(self.cases.index(canvas))
-            
-            if self.count_select == 0:
-                self.selected_pion.set(clicked_pion)
-            if self.count_select == 1 :self.sselected_pion.set(clicked_pion)
-            
-            self.move_pion(canvas, id, clicked_color, clicked_tag)
-
-        if self.parent.status_area.sa_start_second_part.get():
-            self.move_in_plate.set(True)
-
-        self.parent.status_area.sa_selected_pion.set("")
-
-        self.count_select +=1
-        if self.count_select == 2: self.count_select = 0
-    
-    def check_case(self, tag_name):
-        return self.init_tag == tag_name
-    
-    def check_hand_enter(self, event=None, canvas=None):
-        clicked_color = canvas.itemcget(1, "fill")
-        if clicked_color == self.init_color:
-            canvas.config(cursor="plus")
-        else:canvas.config(cursor="hand1")
-
-    def check_hand_leave(self, event=None, canvas=None):
-        canvas.config(cursor="")
-
-    def move_pion(self, case, id, color, tag):
-        if self.move_in_plate.get() and self.check_case(tag) and \
-          self.init_color not in self.selected_pion.get() and \
-           self.init_color in self.sselected_pion.get():
-            
-            color, tag, idx = self.selected_pion.get().split(' ')
-            
-            case.itemconfig(id, fill=color)
-            case.itemconfig(id, tag=tag)
-            
-            # clean after leaved move
-            idx = int(idx)
-            self.cases[idx].itemconfig(id, fill=self.init_color)
-            self.cases[idx].itemconfig(id, tag=self.init_tag)
-
-            self.selected_pion.set("")
-            self.sselected_pion.set("")
-
-        else:
-            case.itemconfig(id, fill=color)
-            case.itemconfig(id, tag=tag)
-
-    def on_resize(self, event):
-        print(event.width, event.height)
-        wscale = float(event.width)/self.width
-        hscale = float(event.height)/self.height
-        self.width  = event.width
-        self.height = event.height
-        self.canvas.config(width=self.width, height=self.height)
-        self.canvas.scale("all", 0, 0, wscale, hscale)
-        
-    def draw_square(self, x0, y0, x1, y1, offset=0, bd=2, fill=''):
-        self.canvas.create_rectangle(x0+offset, y0+offset,
-                                     x0+(x1 - 2*x0)-offset,
-                                     y0+(y1 - 2*y0)-offset,
-                                     width=bd,
-                                     fill=fill)
-    
-    def draw_cross(self, x0, y0, x1, y1, offset, bd=2, fill='black'):
-        
-        self.canvas.create_line(x0, (y0+(y1 - 2*y0)+offset)//2-20,
-                                x0+(x1 - 2*x0),(y0+(y1 - 2*y0)+offset)//2-20,
-                                width=bd, fill=fill)
-        
-        self.canvas.create_line((x0+(x1 - 2*x0)+offset)//2-20, y0,
-                                (x0+(x1 - 2*x0)+offset)//2-20, y0+(y1 - 2*y0),
-                                width=bd, fill=fill)
-        
-    def draw_case(self, x0, y0, x1, y1, d, offset=0, fill="black"):
-        cx0, cy0 = 0, 0
-
-        w4 = (x0+(x1 - 2*x0)+offset)//2-25
-        
-        h1 = y0-5
-        h2 = (y0+(y1 - 2*y0)+offset)//6+12
-        h3 = y0+2*offset-6
-        h4 = (y0+(y1 - 2*y0)+offset)//2-25
-        h5 = h4+offset+45
-        h6 = h4+2*offset+45
-        h7 = y0+(y1 - 2*y0)-6
-        
-        #============================1============================#
-        x11,y11  = (x0-5), h1
-        self.cx11, self.cy11 = (x0-13), (y0-13)
-        self.canvas11 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c11 = self.canvas.create_oval(x11, y11, x11+d, y11+d, fill=fill, outline="")
-        self.c11 = self.canvas11.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas11.place(x=self.cx11, y=self.cy11)
-        
-        x14,y14  = w4, h1
-        self.cx14, self.cy14 = ((x0+(x1 - 2*x0)+offset)//2-33), self.cy11
-        self.canvas14 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c14 = self.canvas.create_oval(x14, y14, x14+d, y14+d, fill=fill, outline="")
-        self.c14 = self.canvas14.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas14.place(x=self.cx14, y=self.cy14)
-        
-        x17,y17  = (x0+(x1 - 2*x0)-6), h1
-        self.cx17, self.cy17 = (x0+(x1 - 2*x0)-12), self.cy11
-        self.canvas17 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c17 = self.canvas.create_oval(x17, y17, x17+d, y17+d, fill=fill, outline="")
-        self.c17 = self.canvas17.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas17.place(x=self.cx17, y=self.cy17)
-        
-        #============================2============================#
-        x22,y22  = (x0+offset-4), h2
-        self.cx22, self.cy22 = (x0+offset-13), (y0+(y1 - 2*y0)+offset)//6+5
-        self.canvas22 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c22 = self.canvas.create_oval(x22, y22, x22+d, y22+d, fill=fill, outline="")
-        self.c22 = self.canvas22.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas22.place(x=self.cx22, y=self.cy22)
-        
-        x24,y24  = w4, h2
-        self.cx24, self.cy24 = self.cx14, self.cy22
-        self.canvas24 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c24 = self.canvas.create_oval(x24, y24, x24+d, y24+d, fill=fill, outline="")
-        self.c24 = self.canvas24.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas24.place(x=self.cx24, y=self.cy24)
-        
-        x26,y26  = (x0+(x1 - 2*x0)-offset-6), h2
-        self.cx26, self.cy26 = (x0+(x1 - 2*x0)-offset-13), self.cy22
-        self.canvas26 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c26 = self.canvas.create_oval(x26, y26, x26+d, y26+d, fill=fill, outline="")
-        self.c26 = self.canvas26.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas26.place(x=self.cx26, y=self.cy26)
-        
-        #============================3============================#
-        x33,y33  = (x0+2*offset-4), h3
-        self.cx33, self.cy33 = (x0+2*offset-13), y0+2*offset-13
-        self.canvas33 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c33 = self.canvas.create_oval(x33, y33, x33+d, y33+d, fill=fill, outline="")
-        self.c33 = self.canvas33.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas33.place(x=self.cx33, y=self.cy33)
-
-        x34,y34  = w4, h3
-        self.cx34, self.cy34 = self.cx14, self.cy33
-        self.canvas34 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c34 = self.canvas.create_oval(x34, y34, x34+d, y34+d, fill=fill, outline="")
-        self.c34 = self.canvas34.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas34.place(x=self.cx34, y=self.cy34)
-        
-        x35,y35  = (x0+(x1 - 2*x0)-2*offset-6), h3
-        self.cx35, self.cy35 = (x0+(x1 - 2*x0)-2*offset-13), self.cy33
-        self.canvas35 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c35 = self.canvas.create_oval(x35, y35, x35+d, y35+d, fill=fill, outline="")
-        self.c35 = self.canvas35.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas35.place(x=self.cx35, y=self.cy35)
-        
-        #============================4============================#
-        x41,y41  = (x0-6), h4
-        self.cx41, self.cy41 = self.cx11, (y0+(y1 - 2*y0)+offset)//2-33
-        self.canvas41 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c41 = self.canvas.create_oval(x41, y41, x41+d, y41+d, fill=fill, outline="")
-        self.c41 = self.canvas41.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas41.place(x=self.cx41, y=self.cy41)
-        
-        x42,y42  = (x0+(x1 - 2*x0)//8+5), h4
-        self.cx42, self.cy42 = (x0+(x1 - 2*x0)//8-3), self.cy41
-        self.canvas42 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c42 = self.canvas.create_oval(x42, y42, x42+d, y42+d, fill=fill, outline="")
-        self.c42 = self.canvas42.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas42.place(x=self.cx42, y=self.cy42)
-        
-        x43,y43  = (x0+(x1 - 2*x0)//4+15), h4
-        self.cx43, self.cy43 = (x0+(x1 - 2*x0)//4+8), self.cy41
-        self.canvas43 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c43 = self.canvas.create_oval(x43, y43, x43+d, y43+d, fill=fill, outline="")
-        self.c43 = self.canvas43.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas43.place(x=self.cx43, y=self.cy43)
-        
-        x45,y45  = (x0+(x1 - 2*x0)-(x0+(x1 - 2*x0)//5+2)), h4
-        self.cx45, self.cy45 = (x0+(x1 - 2*x0)-(x0+(x1 - 2*x0)//5+9)), self.cy41
-        self.canvas45 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c45 = self.canvas.create_oval(x45, y45, x45+d, y45+d, fill=fill, outline="")
-        self.c45 = self.canvas45.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas45.place(x=self.cx45, y=self.cy45)
-        
-        x46,y46  = (x0+(x1 - 2*x0)-5-(x0+(x1 - 2*x0)//16-5)), h4
-        self.cx46, self.cy46 = (x0+(x1 - 2*x0)-5-(x0+(x1 - 2*x0)//16+3)), self.cy41
-        self.canvas46 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c46 = self.canvas.create_oval(x46, y46, x46+d, y46+d, fill=fill, outline="")
-        self.c46 = self.canvas46.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas46.place(x=self.cx46, y=self.cy46)
-        
-        x47,y47  = (x0+(x1 - 2*x0)-5), h4
-        self.cx47, self.cy47 = (x0+(x1 - 2*x0)-13), self.cy41
-        self.canvas47 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c47 = self.canvas.create_oval(x47, y47, x47+d, y47+d, fill=fill, outline="")
-        self.c47 = self.canvas47.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas47.place(x=self.cx47, y=self.cy47)
-        
-        #============================5============================#
-        x53,y53  = (x0+2*offset-4), h5
-        self.cx53, self.cy53 = self.cy33, self.cy41+offset+45
-        self.canvas53 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c53 = self.canvas.create_oval(x53, y53, x53+d, y53+d, fill=fill, outline="")
-        self.c53 = self.canvas53.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas53.place(x=self.cx53, y=self.cy53)
-        
-        x54,y54  = w4, h5
-        self.cx54, self.cy54 = self.cx14, self.cy53
-        self.canvas54 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c54 = self.canvas.create_oval(x54, y54, x54+d, y54+d, fill=fill, outline="")
-        self.c54 = self.canvas54.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas54.place(x=self.cx54, y=self.cy54)
-        
-        x55,y55  = (x0+(x1 - 2*x0)-2*offset-6), h5
-        self.cx55, self.cy55 = self.cx35, self.cy53
-        self.canvas55 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c55 = self.canvas.create_oval(x55, y55, x55+d, y55+d, fill=fill, outline="")
-        self.c55 = self.canvas55.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas55.place(x=self.cx55, y=self.cy55)
-        
-        #============================6============================#
-        x62,y62  = (x0+offset-4), h6
-        self.cx62, self.cy62 = self.cx22, self.cy41+2*offset+45
-        self.canvas62 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c62 = self.canvas.create_oval(x62, y62, x62+d, y62+d, fill=fill, outline="")
-        self.c62 = self.canvas62.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas62.place(x=self.cx62, y=self.cy62)
-        
-        x64,y64  = w4, h6
-        self.cx64, self.cy64 = self.cx14, self.cy62
-        self.canvas64 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c64 = self.canvas.create_oval(x64, y64, x64+d, y64+d, fill=fill, outline="")
-        self.c64 = self.canvas64.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas64.place(x=self.cx64, y=self.cy64)
-        
-        x66,y66  = (x0+(x1 - 2*x0)-offset-6), h6
-        self.cx66, self.cy66 = self.cx26, self.cy62
-        self.canvas66 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c66 = self.canvas.create_oval(x66, y66, x66+d, y66+d, fill=fill, outline="")
-        self.c66 = self.canvas66.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas66.place(x=self.cx66, y=self.cy66)
-        
-        #============================7============================#
-        x71,y71  = (x0-6), h7
-        self.cx71, self.cy71 = self.cx41, y0+(y1 - 2*y0)-13
-        self.canvas71 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c71 = self.canvas.create_oval(x71, y71, x71+d, y71+d, fill=fill, outline="")
-        self.c71 = self.canvas71.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas71.place(x=self.cx71, y=self.cy71)
-        
-        x74,y74  = w4, h7
-        self.cx74, self.cy74 = self.cx14, self.cy71
-        self.canvas74 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c74 = self.canvas.create_oval(x74, y74, x74+d, y74+d, fill=fill, outline="")
-        self.c74 = self.canvas74.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas74.place(x=self.cx74, y=self.cy74)
-        
-        x77,y77  = (x0+(x1 - 2*x0)-6), h7
-        self.cx77, self.cy77 = self.cx17, self.cy71
-        self.canvas77 = tk.Canvas(self.canvas, bg=self.bg,
-                               width=self.csize,
-                               height=self.csize, 
-                               highlightthickness=0)
-        #self.c77 = self.canvas.create_oval(x77, y77, x77+d, y77+d, fill=fill, outline="")
-        self.c77 = self.canvas77.create_oval(cx0, cy0, self.csize, self.csize, fill=fill, outline="", tag=self.init_tag)
-        self.canvas77.place(x=self.cx77, y=self.cy77)
-
 
 class StatusArea(tk.Frame):
     sa_count_pion = 0
-    def __init__(self, parent, width, height, bg, *args, **kwargs):
+    def __init__(self, parent, width, height, bg, sa_pbg, *args, **kwargs):
         tk.Frame.__init__(self, parent, width=width, height=height, bg=bg, *args, **kwargs)
         self.parent = parent
         
@@ -702,8 +412,11 @@ class StatusArea(tk.Frame):
         self.num_pion = 9
         self.x0, self.y0  = 0, 0
         
-        self.color1 = '#1401A3'
-        self.color2 = '#C10105'
+        self.color1 = 'blue'#'#1401A3'
+        self.color2 = 'red'#'#C10105'
+        self.sa_pbg = sa_pbg
+        
+        line_width  = 2
 
         self.bg = bg
         self.pad = 9
@@ -716,11 +429,11 @@ class StatusArea(tk.Frame):
         self.spion = tk.IntVar()
         self.spion.set(1)
 
-        self.status = tk.StringVar()
-        self.status.set("C'est au tour de Joueur 1")
+        self.status_tour = tk.StringVar()
+        self.status_tour.set("C'est au tour de Joueur 1")
 
-        self.phase_status = tk.StringVar()
-        self.phase_status.set("Première Phase")
+        self.status_phase = tk.StringVar()
+        self.status_phase.set("Première Phase")
 
         self.rule_status = tk.StringVar()
         self.rule_status.set("Règles du jeu")
@@ -739,42 +452,39 @@ class StatusArea(tk.Frame):
         height2 = height - (height1+height3)
         
         self.frame1 = tk.Frame(self, width=width, height=height1, bg=bg)
-        self.frame2 = tk.Frame(self, width=width, height=height2, bg='#B5B5B5', highlightthickness=1)
-        self.frame3 = tk.Frame(self, width=width, height=height3, bg='#EFEFEF')
+        self.frame2 = tk.Frame(self, width=width, height=height2, bg=self.sa_pbg, highlightthickness=1)
+        self.frame3 = tk.Frame(self, width=width, height=height3, bg="#EFEFEF")
         
         self.height21 = 1
         self.height22 = self.height21
         self.height23 = height2 - 2*self.height21
         
-        self.frame21 = tk.Frame(self.frame2, width=width, height=self.height21, bg='#B5B5B5')
-        self.frame22 = tk.Frame(self.frame2, width=width, height=self.height22, bg='#B5B5B5')
-        self.frame23 = tk.Frame(self.frame2, width=width, height=self.height23, bg=bg)
+        self.canvas  = tk.Canvas(self.frame2,width=width, height=self.height21, bg="#EFEFEF", highlightthickness=0)
+        self.frame21 = tk.Frame(self.frame2, width=width, height=self.height23, bg=bg)
         
-        self.label = tk.Label(self.frame1, textvariable=self.phase_status,
+        self.label = tk.Label(self.frame1, textvariable=self.status_phase,
                               foreground="black", background=bg,
                               font='Terminal 13 bold')
 
-        self.label_status = tk.Label(self.frame1, textvariable=self.status,
+        self.label_status = tk.Label(self.frame1, textvariable=self.status_phase,
                               foreground=self.color1, background=bg,
                               font='Terminal 10 bold')
 
-        self.label_trule = tk.Label(self.frame23, textvariable=self.rule_status,
+        self.label_trule = tk.Label(self.frame21, textvariable=self.rule_status,
                               foreground="black", background=bg,
                               font='Terminal 12 bold')
 
-        self.label_rule = tk.Label(self.frame23, textvariable=self.rule_msg_status,
+        self.label_rule = tk.Label(self.frame21, textvariable=self.rule_msg_status,
                               foreground="black", background=bg,
                               font='Terminal 10')
 
-        #===========================Player 1============================#
-        self.label1 = tk.Label(self.frame21, text='Joueur 1',
-                 foreground="white", background=self.color1,
-                 font='Terminal 12 bold')
+        #self.label1 = tk.Label(self.frame21, text='Joueur 1',
+        #         foreground="white", background=self.color1,
+        #         font='Terminal 12 bold')
 
-        #===========================Player 2============================#
-        self.label2 = tk.Label(self.frame22, text='Joueur 2',
-                 foreground="white", background=self.color2,
-                 font='Terminal 12 bold')
+        #self.label2 = tk.Label(self.frame22, text='Joueur 2',
+        #         foreground="white", background=self.color2,
+        #         font='Terminal 12 bold')
         
         self.btn_quit = tk.Button(self.frame3, text ='Quitter',
                                   width=8,
@@ -808,9 +518,9 @@ class StatusArea(tk.Frame):
         
         self.label.pack(side=tk.LEFT, padx=self.pad, pady=self.pad)
         
-        self.label1.pack(side=tk.LEFT, padx=self.pad, pady=1)
+        #self.label1.pack(side=tk.LEFT, padx=self.pad, pady=1)
         self.label_status.pack(side=tk.RIGHT, padx=self.pad, pady=self.pad)
-        self.label2.pack(side=tk.LEFT, padx=self.pad, pady=1)              
+        #self.label2.pack(side=tk.LEFT, padx=self.pad, pady=1)              
         
         self.btn_quit.pack(side=tk.LEFT, padx=self.pad, pady=self.pad)
         self.btn_about.pack(side=tk.LEFT, anchor='center', expand=True, padx=self.pad, pady=self.pad)
@@ -819,70 +529,29 @@ class StatusArea(tk.Frame):
         self.label_trule.pack(side=tk.TOP, anchor='center', padx=self.pad, pady=self.pad)
         self.label_rule.pack(side=tk.TOP, anchor='center', padx=self.pad, pady=(0, self.pad))
         
+        self.p11 = self.canvas.create_oval(100,  40, 125,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p12 = self.canvas.create_oval(145,  40, 170,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p13 = self.canvas.create_oval(190,  40, 215,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p14 = self.canvas.create_oval(235,  40, 260,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p15 = self.canvas.create_oval(280,  40, 305,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p16 = self.canvas.create_oval(325,  40, 350,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p17 = self.canvas.create_oval(370,  40, 395,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p18 = self.canvas.create_oval(415,  40, 440,  65,  width=line_width, fill=self.color1, outline=self.color1)
+        self.p19 = self.canvas.create_oval(460,  40, 485,  65,  width=line_width, fill=self.color1, outline=self.color1)
+
+        self.p21 = self.canvas.create_oval(100,  90, 125,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p22 = self.canvas.create_oval(145,  90, 170,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p23 = self.canvas.create_oval(190,  90, 215,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p24 = self.canvas.create_oval(235,  90, 260,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p25 = self.canvas.create_oval(280,  90, 305,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p26 = self.canvas.create_oval(325,  90, 350,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p27 = self.canvas.create_oval(370,  90, 395,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p28 = self.canvas.create_oval(415,  90, 440,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        self.p29 = self.canvas.create_oval(460,  90, 485,  115,  width=line_width, fill=self.color2, outline=self.color2)
+        
+        #self.canvas.tag_bind(self.oval, self.tag, self.mouse_click)
+        
         self.show_frame()
-        
-        self.canvas1 = [tk.Canvas(self.frame21, bg='#B5B5B5',
-                            width=self.x0+self.d,
-                            height=self.height21, 
-                            highlightthickness=0) for _ in range(self.num_pion)]
-
-        self.canvas2 = [tk.Canvas(self.frame22, bg='#B5B5B5',
-                            width=self.x0+self.d,
-                            height=self.height21, 
-                            highlightthickness=0) for _ in range(self.num_pion)]
-        
-        self.tag_name1 = "pion1"
-        self.tag_name2 = "pion2"
-        for i in range(self.num_pion):
-            self.canvas1[i].create_oval(self.x0, self.y0, self.d, self.d, outline="", fill=self.color1, tag=self.tag_name1)
-            self.canvas2[i].create_oval(self.x0, self.y0, self.d, self.d, outline="", fill=self.color2, tag=self.tag_name2)
-            
-            self.canvas1[i].tag_bind(self.tag_name1, "<Enter>", lambda event, canvas=self.canvas1[i]: self.check_hand_enter(canvas=canvas))
-            self.canvas1[i].tag_bind(self.tag_name1, "<Leave>", lambda event, canvas=self.canvas1[i]: self.check_hand_leave(canvas=canvas))
-
-            self.canvas2[i].tag_bind(self.tag_name2, "<Enter>", lambda event, canvas=self.canvas2[i]: self.check_hand_enter(canvas=canvas))
-            self.canvas2[i].tag_bind(self.tag_name2, "<Leave>", lambda event, canvas=self.canvas2[i]: self.check_hand_leave(canvas=canvas))
-
-            self.canvas1[i].bind("<Button-1>", lambda event, canvas=self.canvas1[i]: self.pion_click(event, canvas=canvas))
-            self.canvas2[i].bind("<Button-1>", lambda event, canvas=self.canvas2[i]: self.pion_click(event, canvas=canvas))
-            
-            self.canvas1[i].pack(side=tk.LEFT, fill="both", expand=True, padx=(0, 9))
-            self.canvas2[i].pack(side=tk.LEFT, fill="both", expand=True, padx=(0, 9))
-
-    def pion_click(self, event=None, canvas=None):
-        x, y = event.x, event.y
-        ids = canvas.find_overlapping(x, y, x, y)
-        clicked_color = ", ".join(canvas.itemcget(id, "fill") for id in ids)
-        clicked_tag   = ", ".join(canvas.itemcget(id, "tag") for id in ids)
-        
-        clicked_color = clicked_color[:len(self.color1)]
-        clicked_tag   = clicked_tag[:len(self.tag_name1)]
-        
-        clicked_pion = clicked_color + ' ' + clicked_tag
- 
-        self.sa_selected_pion.set(clicked_pion)
-
-        if self.spion.get() == 1:
-            self.status.set("C'est au tour de Joueur 1")
-        elif self.spion.get() == 2:
-            self.status.set("C'est au tour de Joueur 2")
-
-        canvas.destroy()
-
-        StatusArea.sa_count_pion +=1
-
-        if StatusArea.sa_count_pion == 2*self.num_pion:
-            self.sa_start_second_part.set(True)
-
-    def check_hand_enter(self, event=None, canvas=None):
-        canvas.config(cursor="hand1")
-
-    def check_hand_leave(self, event=None, canvas=None):
-        canvas.config(cursor="")
-    
-    def play(self):
-        #messagebox.showinfo("Moulin", "Welcome to Moulin Game!")
-        pass
     
     def show_frame(self):
         self.rowconfigure(1, weight=1)
@@ -892,9 +561,8 @@ class StatusArea(tk.Frame):
         self.frame2.grid(row=1, column=0, sticky="nsew")
         self.frame3.grid(row=2, column=0, sticky="nsew")
         
-        self.frame21.pack(side=tk.TOP, expand=True)
-        self.frame22.pack(side=tk.TOP, expand=True)
-        self.frame23.pack(fill="both", expand=True)
+        self.canvas.pack(fill="both", side=tk.TOP, expand=True)
+        self.frame21.pack(fill="both", expand=True)
         
     def about(self):
         messagebox.showinfo('À propos',
@@ -904,37 +572,6 @@ class StatusArea(tk.Frame):
                      "Aussi appelé jeu du charret (en Suisse), certains lui donnent le"
                      "nom médiéval de jeu de mérelles.")
 
-
-class GraphicPion:
-    def __init__(self, name=None):
-        self.name = name
-
-        #self.bind("<Button-1>", self.mouse_click)
-
-    def draw(self, canvas, x0, y0, d, fill="", tag="pion", outline=""):
-        self.canvas = canvas
-        self.fill = fill
-        self.tag = tag
-        self.outline = outline
-        self.x0, self.y0, self.d = x0, y0, d
-        self.oval = self.canvas.create_oval(self.x0, self.y0,
-                                            self.x0+self.d, 
-                                            self.y0+self.d,
-                                            fill=self.fill, 
-                                            outline=self.outline)
-        #self.canvas.tag_bind(self.oval, self.tag, self.mouse_click)
-        #self.canvas.tag_bind(self.tag, "<Enter>", lambda event, canvas=self.canvas: self.check_hand_enter(canvas=canvas))
-        #self.canvas.tag_bind(self.tag, "<Leave>", lambda event, canvas=self.canvas: self.check_hand_leave(canvas=canvas))
-
-    def mouse_click(self, event=None, x=None, y=None):
-        print(f"I got a mouse click on {self.name}")
-
-    def check_hand_enter(self, event=None, canvas=None):
-        print('*****check_hand_enter*****')
-        canvas.config(cursor="hand1")
-
-    def check_hand_leave(self, event=None, canvas=None):
-        canvas.config(cursor="")
 
 #-----------------------------------------------
 class Pion:
@@ -1036,5 +673,12 @@ class Plateau:
             v.pion = Pion(p, c)
             del temp[temp.index(p)]
             
+
+def run():
+    root = tk.Tk()
+    root.title("Moulin")
+    Moulin(root).pack(fill="both", expand=True)
+    root.mainloop()
             
-if __name__ == '__main__': run_moulin()
+            
+if __name__ == '__main__': run()

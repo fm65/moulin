@@ -2,28 +2,38 @@ from player import *
 from cell import *
 import pickle
 
+NB_PION = 18
+
+list_of_position = [(1, 1), (1, 4), (1, 7),
+                        (2, 2), (2, 4), (2, 6),
+                        (3, 3), (3, 4), (3, 5),
+                        (4, 1), (4, 2), (4, 3),
+                        (4, 5), (4, 6), (4, 7),
+                        (5, 3), (5, 4), (5, 5),
+                        (6, 2), (6, 4), (6, 6),
+                        (7, 1), (7, 4), (7, 7)]
 
 class Damier:
 
-    list_of_moulins = [[(1, 1), (1, 4), (1, 7)], [(2, 2), (2, 4), (2, 6)], [(3, 3), (3, 4), (3, 5)],
-                       [(4, 1), (4, 2), (4, 3)], [(4, 5), (4, 6), (4, 7)], [(5, 3), (5, 4), (5, 5)],
-                       [(6, 2), (6, 4), (6, 6)], [(7, 1), (7, 4), (7, 7)], [(1, 1), (4, 1), (7, 1)],
-                       [(2, 2), (4, 2), (6, 2)], [(3, 3), (4, 3), (5, 3)], [(1, 4), (2, 4), (3, 4)],
-                       [(5, 4), (6, 4), (7, 4)], [(3, 5), (4, 5), (5, 5)], [(2, 6), (4, 6), (6, 6)],
-                       [(1, 7), (4, 7), (7, 7)]
-                       ]
-    position_list = [(1, 1), (1, 4), (1, 7),
-                     (2, 2), (2, 4), (2, 6),
-                     (3, 3), (3, 4), (3, 5),
-                     (4, 1), (4, 2), (4, 3),
-                     (4, 5), (4, 6), (4, 7),
-                     (5, 3), (5, 4), (5, 5),
-                     (6, 2), (6, 4), (6, 6),
-                     (7, 1), (7, 4), (7, 7)]
+    list_of_moulin = [[(1, 1), (1, 4), (1, 7)], [(2, 2), (2, 4), (2, 6)], [(3, 3), (3, 4), (3, 5)],
+                      [(4, 1), (4, 2), (4, 3)], [(4, 5), (4, 6), (4, 7)], [(5, 3), (5, 4), (5, 5)],
+                      [(6, 2), (6, 4), (6, 6)], [(7, 1), (7, 4), (7, 7)], [(1, 1), (4, 1), (7, 1)],
+                      [(2, 2), (4, 2), (6, 2)], [(3, 3), (4, 3), (5, 3)], [(1, 4), (2, 4), (3, 4)],
+                      [(5, 4), (6, 4), (7, 4)], [(3, 5), (4, 5), (5, 5)], [(2, 6), (4, 6), (6, 6)],
+                      [(1, 7), (4, 7), (7, 7)]]
+    
+    list_of_position = [(1, 1), (1, 4), (1, 7),
+                        (2, 2), (2, 4), (2, 6),
+                        (3, 3), (3, 4), (3, 5),
+                        (4, 1), (4, 2), (4, 3),
+                        (4, 5), (4, 6), (4, 7),
+                        (5, 3), (5, 4), (5, 5),
+                        (6, 2), (6, 4), (6, 6),
+                        (7, 1), (7, 4), (7, 7)]
 
     def __init__(self):
         self.cell_list = {}
-        for position in Damier.position_list:
+        for position in Damier.list_of_position:
             self.cell_list[position] = Cell(position, self)
         self.player1 = Player("Rouge", self)
         self.player2 = Player("Bleu", self)
@@ -56,7 +66,7 @@ class Damier:
 
     def get_empty_position_list(self):
         return list(filter(lambda position: self.get_cell(position).is_empty(), Damier.position_list))
-
+    
     def set_player_for_cell(self, position):
         cell = self.get_cell(position)
         player = self.get_current_player()
@@ -71,16 +81,16 @@ class Damier:
         return list(filter(lambda cell: cell.get_player() == player, self.cell_list.values()))
 
     def is_in_moulins(self, cell) -> bool:
-        for position_list_moulin in self.list_of_moulins:
-            if not cell.get_position() in position_list_moulin:
+        for list_of_position_moulin in self.list_of_moulin:
+            if not cell.get_position() in list_of_position_moulin:
                 continue
-            if (self.cell_list[position_list_moulin[0]].get_player() == self.cell_list[position_list_moulin[1]].get_player()) \
-                    and (self.cell_list[position_list_moulin[1]].get_player() == self.cell_list[position_list_moulin[2]].get_player()):
+            if (self.cell_list[list_of_position_moulin[0]].get_player() == self.cell_list[list_of_position_moulin[1]].get_player()) \
+                    and (self.cell_list[list_of_position_moulin[1]].get_player() == self.cell_list[list_of_position_moulin[2]].get_player()):
                 return True
         return False
 
     def has_all_pion_in_moulins(self, player):
-        for position in self.position_list:
+        for position in self.list_of_position:
             if not self.cell_list[position].get_player() == player:
                 continue
             if not self.is_in_moulins(self.cell_list[position]):
@@ -107,7 +117,7 @@ class Damier:
 
     def get_number_of_pion_in_field(self):
         count = 0
-        for position in Damier.position_list:
+        for position in Damier.list_of_position:
             cell = self.cell_list[position]
             if cell.is_empty():
                 continue
@@ -116,8 +126,10 @@ class Damier:
         return count
 
     def is_finished(self):
-        if self.player1.count_pion() == 2 or self.player2.count_pion() == 2 or self.player1.count_movable_pion() == 0 \
-                or self.player2.count_movable_pion() == 0:
+        if self.player1.count_pion() == 2 or \
+           self.player2.count_pion() == 2 or \
+           self.player1.count_movable_pion() == 0 or \
+           self.player2.count_movable_pion() == 0:
             return True
         return False
 
