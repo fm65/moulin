@@ -96,6 +96,30 @@ class FieldTests(unittest.TestCase):
         # Test si la fonction is_finished détecte bien la fin de partie
         self.assertTrue(field.is_finished())
 
+    def test_cant_move_a_pion(self):
+        field = Damier()
+        field.cell_list[(1, 4)].player = field.get_current_player()
+        field.cell_list[(4, 7)].player = field.get_current_player()
+        field.cell_list[(1, 1)].player = field.get_current_player()
+        field.cell_list[(6, 2)].player = field.get_current_player()
+        field.cell_list[(1, 7)].player = field.get_not_current_player()
+        field.cell_list[(7, 7)].player = field.get_not_current_player()
+        field.cell_list[(7, 1)].player = field.get_not_current_player()
+        field.cell_list[(4, 5)].player = field.get_not_current_player()
+        # Test si le pion en 1,7 est bien détecte comme étant bloqué lorsque le joueur a plus de 3 pions
+        self.assertFalse(field.can_move(field.cell_list[(1, 7)], field.cell_list[(3, 4)]))
+
+    def test_cant_move_a_pion_with_3_pion(self):
+        field = Damier()
+        field.cell_list[(1, 4)].player = field.get_current_player()
+        field.cell_list[(4, 7)].player = field.get_current_player()
+        field.cell_list[(1, 1)].player = field.get_current_player()
+        field.cell_list[(1, 7)].player = field.get_not_current_player()
+        field.cell_list[(7, 7)].player = field.get_not_current_player()
+        field.cell_list[(7, 1)].player = field.get_not_current_player()
+        # Test si le pion en 1,7 est pas détecté comme bloqué lorsque le joueur a 3 pions
+        self.assertTrue(field.can_move(field.cell_list[(1, 7)], field.cell_list[(3, 4)]))
+
 
 if __name__ == '__main__':
     unittest.main()

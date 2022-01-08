@@ -30,6 +30,7 @@ def print_field(field):
         player = field.get_cell(position).get_player()
         tmp_list = list(to_print[position[0]])
         tmp_list[position[1]] = get_player_symbol(player)
+        print(to_print)
         to_print[position[0]] = "".join(tmp_list)
     for line in to_print:
         print(line)
@@ -66,7 +67,7 @@ def player_did_moulin(field : Damier):
         if field.is_in_moulins(cell_kill):
             print(Translation.get_translation("playerdidmoulin.cell.in.moulin"))
             continue
-        cell_kill.die()
+        field.kill_cell(cell_kill)
         field.switch_player()
         break
 
@@ -148,7 +149,7 @@ while not field.is_finished():
             continue
         break
     field.move(chosen_cell, chosen_new_cell)
-    if not field.can_kill(chosen_new_cell) or field.has_all_pion_in_moulins(field.get_not_current_player()):
+    if not field.can_kill(chosen_new_cell):
         field.switch_player()
         field.want_to_save()
         continue

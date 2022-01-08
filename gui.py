@@ -106,7 +106,7 @@ class Moulin(tk.Frame):
                     coords = self.dcoords_dict[str(res2[1])]
                     cell_selected = field.get_cell(coords)
                     cell_selected.set_player(field.get_current_player())
-                    pcolor = "bleu" if field.get_current_player().get_color() == "blue" else "rouge"
+                    pcolor = "bleu" if field.get_not_current_player().get_color() == "blue" else "rouge"
                     self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
 
                     if field.can_kill(cell_selected) and not self.is_moulin:
@@ -118,7 +118,7 @@ class Moulin(tk.Frame):
                         self.is_moulin = False
                         self.count_click = 0
 
-                    if not  self.is_moulin: field.switch_player()
+                    if not self.is_moulin:field.switch_player()
 
                     self.ga.canvas.itemconfig(res2[1], fill=self.selected, outline=self.selected)
                     self.sa.canvas.itemconfig(self.id_to_delete, fill=self.sa_pbg, outline=self.sa_pbg)
