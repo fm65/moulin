@@ -140,6 +140,8 @@ class Damier:
     def kill_cell(self, cell):
         if self.can_get_killed(cell):
             cell.die()
+            return True
+        return False
 
     def save_state(self):
         with open("Sauvegarde_du_moulin", "wb") as f:
