@@ -207,23 +207,6 @@ class Moulin(tk.Frame):
                         print("#src_res:", self.src_res, " | #src_color:", self.src_color)
                         field.switch_player()
                         self.count_click = 0
-<<<<<<< Updated upstream
-
-                    if not self.is_moulin:field.switch_player()
-
-                    self.ga.canvas.itemconfig(res2[1], fill=self.selected, outline=self.selected)
-                    self.sa.canvas.itemconfig(self.id_to_delete, fill=self.sa_pbg, outline=self.sa_pbg)
-                    #self.count_click = 0
-                    self.selected = None
-                else:
-                    print("***WARNING: invalid click")
-                    print(self.selected_color)
-                    print(field.is_your_turn_to_play(self.selected_color))
-                    print(self.ga.canvas.itemcget(res2[1], "fill") == "white" or self.is_moulin)
-                    print(res2[0])
-                    print(self.count_click == 1)
-                    print(self.selected != None)
-=======
                     else:
                         self.count_click = 1
                 
@@ -238,7 +221,6 @@ class Moulin(tk.Frame):
                     self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
                     
                     self.is_moulin = False
->>>>>>> Stashed changes
                     self.count_click = 0
                     
                 else:
