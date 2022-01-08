@@ -9,6 +9,38 @@ import damier
 NB_PION = 18
 field = damier.Damier()
 
+empty_game = ["╔═══════╗",
+              "║       ║",
+              "║       ║",
+              "║       ║",
+              "║       ║",
+              "║       ║",
+              "║       ║",
+              "║       ║",
+              "╚═══════╝"]
+
+
+
+
+def get_player_symbol(player):
+    if player is None:
+        return "◯"
+    if player.get_color() == "blue":
+        return "B"#"①"
+    if player.get_color() == "red":
+        return "R"#"②"
+
+def print_field(field):
+    to_print = empty_game
+    for position in damier.Damier.position_list:
+        #print("c:", c)
+        player = field.get_cell(position).get_player()
+        tmp_list = list(to_print[position[0]])
+        tmp_list[position[1]] = get_player_symbol(player)
+        to_print[position[0]] = "".join(tmp_list)
+    for line in to_print:
+        print(line)
+
 
 class Moulin(tk.Frame):
     def __init__(self, parent, bg="white", *args, **kwargs):
@@ -33,6 +65,7 @@ class Moulin(tk.Frame):
         self.is_phase_two.set(False)
         
         self.count_click = 0
+        self.line_width = 3
         
         self.selected = None
 
@@ -51,6 +84,11 @@ class Moulin(tk.Frame):
         
         self.ga_coords = list(range(self.ga.c11, self.ga.c77+1))
         self.sa_coords = list(range(self.sa.p11, self.sa.p29+1))
+        self.sa_coords1 = self.sa_coords[:len(self.sa_coords)//2]
+        self.sa_coords2 = self.sa_coords[len(self.sa_coords)//2:]
+        
+        self.dcount_pion1 = len(self.sa_coords1)
+        self.dcount_pion2 = self.dcount_pion1
                 
         self.list_of_pions = list(range(1, NB_PION+1))
                                   
@@ -76,47 +114,100 @@ class Moulin(tk.Frame):
         return False, None
         
     def on_click(self, event):
+        res = self.check_coords(self.ga.canvas, self.ga_coords, event)
+        self.current_color = field.get_current_player().get_color()
         
-        res1 = self.check_coords(self.sa.canvas, self.sa_coords, event)
-        res2 = self.check_coords(self.ga.canvas, self.ga_coords, event)
-        
-        res = res1 if res1[0] else res2
-        
-        # phase 1
-        if self.is_phase_one:            
-            if not res[1]: print("***WARNING: invalid click")
-            else:
-                print("PHASE 1 | ")#, self.pcoords_dict[str(id)])
+        if self.is_phase_one.get(): #=====================PHASE 1=====================#          
+            if res[1]:
+                print("PHASE 1 | ", self.dcoords_dict[str(res[1])])
                 
-                if self.count_click == 0 and res1[0] and \
-                   self.sa.canvas.itemcget(res1[1], "fill") != self.sa_pbg and not self.is_moulin:
-                    self.selected =  self.sa.canvas.itemcget(res1[1], "fill")
-                    self.count_click +=1
-                    self.id_to_delete = res1[1]
-                    self.selected_color = self.sa.canvas.itemcget(res1[1], "fill")
-
-
-                elif self.selected != None and self.count_click == 1 and \
-                     res2[0] and field.is_your_turn_to_play(self.selected_color) and \
-                        (self.ga.canvas.itemcget(res2[1], "fill") == "white" or self.is_moulin):
-                    print("#count_click:", self.count_click, " | ", "#selected:", self.selected,  " | ", "#id:", res2[1])
-                    print("POUSED | ", self.dcoords_dict[str(res2[1])], " | ID TO DEL:", self.id_to_delete)
-                    print(self.selected_color)
-
-                    coords = self.dcoords_dict[str(res2[1])]
+                if field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
+                   self.ga.canvas.itemcget(res[1], "fill") == "white":
+                    
+                    pcolor = "bleu" if not self.current_color == "blue" else "rouge"
+                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                    
+                    coords = self.dcoords_dict[str(res[1])]
                     cell_selected = field.get_cell(coords)
                     cell_selected.set_player(field.get_current_player())
-                    pcolor = "bleu" if field.get_not_current_player().get_color() == "blue" else "rouge"
-                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
 
                     if field.can_kill(cell_selected) and not self.is_moulin:
+                        pcolor = "bleu" if self.current_color == "blue" else "rouge"
                         self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
                         self.is_moulin = True
-                        self.count_click = 1
+
+                    self.ga.canvas.itemconfig(res[1], fill=self.current_color, outline=self.current_color)
+                    
+                    if self.current_color == "blue":
+                        k = self.sa_coords1[self.dcount_pion1-1]
+                        self.dcount_pion1 -=1
                     else:
-                        self.ga.canvas.itemconfig(res2[1], fill="white", outline="black")
-                        self.is_moulin = False
+                        k = self.sa_coords2[self.dcount_pion2-1]
+                        self.dcount_pion2 -=1
+                    index = self.sa_coords[k-1]
+                    self.sa.canvas.itemconfig(self.sa_coords[index-1], width=self.line_width, fill=self.sa_pbg, outline=self.sa_pbg)
+                    
+                    field.switch_player()
+                        
+                    if self.dcount_pion2 == 0 and not self.is_moulin:
+                        self.is_phase_one.set(False)
+                        self.is_phase_two.set(True)
+                        self.sa.status_phase.set("Deuxième Phase")
+                        self.sa.status_msg_rule.set(self.sa.msg_rule2)
+                                                
+                elif self.ga.canvas.itemcget(res[1], "fill")\
+                     not in ("white", field.get_not_current_player().get_color())\
+                     and self.is_moulin:
+                    
+                    print("CLICKEK | ", self.dcoords_dict[str(res[1])])
+                    self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
+                    
+                    pcolor = "bleu" if self.current_color == "blue" else "rouge"
+                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                    self.is_moulin = False
+                
+                else: print("***WARNING2: invalid click", "#is_moulin:", self.is_moulin)
+            else: print("***WARNING1: invalid click")
+        
+        elif self.is_phase_two.get(): #=====================PHASE 2=====================#
+            if res[1]:
+                print("PHASE 2 | ", self.dcoords_dict[str(res[1])])
+                
+                if field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
+                   self.ga.canvas.itemcget(res[1], "fill") not in ("white", field.get_not_current_player().get_color()) and self.count_click == 0:
+                    
+                    print("CLICKEK | ", self.dcoords_dict[str(res[1])], "res:", res)
+                    self.src_coord = self.dcoords_dict[str(res[1])]
+                    self.src_color = self.ga.canvas.itemcget(res[1], "fill")
+                    self.src_res   = res
+                    self.count_click +=1
+                
+                elif field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
+                   self.ga.canvas.itemcget(res[1], "fill") == "white" and self.count_click == 1:
+                    
+                    pcolor = "bleu" if not self.current_color == "blue" else "rouge"
+                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                    
+                    coords = self.dcoords_dict[str(res[1])]
+                    src_coord = field.get_cell(self.src_coord)
+                    cell_selected = field.get_cell(coords)
+                    is_moved = field.can_move(src_coord, cell_selected)
+                    
+                    print("\n@can_kill:", field.can_kill(cell_selected), " | @is_moved:", is_moved, " | @is_moulin:", self.is_moulin)
+                    if field.can_kill(cell_selected) and not self.is_moulin:
+                        pcolor = "bleu" if self.src_color == "blue" else "rouge"
+                        self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
+                        self.is_moulin = True
+                        
+                    if is_moved:
+                        cell_selected.set_player(field.get_current_player())
+                        self.ga.canvas.itemconfig(self.src_res[1], fill="white", outline="black")
+                        self.ga.canvas.itemconfig(res[1], fill=self.src_color, outline=self.src_color)
+                        print("#cur_res:", res, "          | #current_color:", self.current_color)
+                        print("#src_res:", self.src_res, " | #src_color:", self.src_color)
+                        field.switch_player()
                         self.count_click = 0
+<<<<<<< Updated upstream
 
                     if not self.is_moulin:field.switch_player()
 
@@ -132,18 +223,30 @@ class Moulin(tk.Frame):
                     print(res2[0])
                     print(self.count_click == 1)
                     print(self.selected != None)
+=======
+                    else:
+                        self.count_click = 1
+                
+                elif self.ga.canvas.itemcget(res[1], "fill")\
+                     not in ("white", field.get_not_current_player().get_color())\
+                     and self.is_moulin:
+                    
+                    print("#MOULIN | ", self.dcoords_dict[str(res[1])])
+                    self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
+                    
+                    pcolor = "bleu" if self.current_color == "blue" else "rouge"
+                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                    
+                    self.is_moulin = False
+>>>>>>> Stashed changes
                     self.count_click = 0
+                    
+                else:
+                    print("***WARNING3: invalid click")
+                    print("current_color:", self.current_color)
         
-        # phase 2
-        elif self.is_phase_two:
-            res = self.check_coords(self.ga.canvas, self.ga_coords, event)
-            id = res[1]
-            if not id: pass
-            else:
-                print("PHASE 2 | ", self.dcoords_dict[str(id)])
-                self.ga.canvas.itemconfig(id, fill='blue', outline='blue')
-        
-        else: pass
+        else: print("***WARNING4: invalid click")
+        print_field(field)
             
    
     def start_page(self, event=None):
@@ -346,24 +449,7 @@ class StartPage(tk.Toplevel):
         self.destroy()
         self.parent.quit()
 
-class Menu(tk.Frame):
-    def __init__(self, parent, bg, height, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.parent = parent
         
-        s = 6*" " 
-        tk.Label(self,
-              text=f'[F1] À propos {s} [F2] Nouvelle partie {s} [F11] Full screen {s} [ESC] Quitter',
-              foreground="white", background=bg, height=height,
-              relief="raised", font='Terminal 12 bold').pack(anchor=tk.N, fill=tk.X)
-    
-    def about(self, event):
-        messagebox.showinfo('À propos',
-             message="Bienvenue dans le jeu du Moulin avec Tkinter.\n\n"
-                     "Le jeu du moulin est un jeu de société traditionnel en Europe.\n\n"
-                     "Le tablier de jeu existait déjà dans la Rome antique.\n\n"
-                     "Aussi appelé jeu du charret (en Suisse), certains lui donnent le nom médiéval de jeu de mérelles.")
-
 class GameArea(tk.Frame):
     def __init__(self, parent, bg, width, height, *args, **kwargs):
         tk.Frame.__init__(self, parent, width=width, height=height, bg=bg, *args, **kwargs)
@@ -422,8 +508,7 @@ class GameArea(tk.Frame):
         self.c74 = self.canvas.create_oval(337, 654, 362, 679, width=line_width, fill=oval_color, outline=line_color)
         self.c77 = self.canvas.create_oval(653, 654, 678, 679, width=line_width, fill=oval_color, outline=line_color)
         
-        # display damier
-        self.canvas.pack(fill="both", expand=True)
+        self.canvas.pack(fill="both", expand=True) # display damier
     
 
 class StatusArea(tk.Frame):
@@ -432,28 +517,34 @@ class StatusArea(tk.Frame):
         tk.Frame.__init__(self, parent, width=width, height=height, bg=bg, *args, **kwargs)
         self.parent = parent
         
-        self.rule = "Le jeu commence avec un plateau vide. Les joueurs\n" + \
-                    "placent à tour de rôle leurs pions sur un point  \n" + \
-                    "libre du plateau. Pendant cette phase, il est    \n" + \
-                    "interdit de déplacer les pions déjà placés sur   \n"   +\
-                    "le plateau.                                      \n" + \
-                    "Si un joueur forme un moulin, il retire un pion  \n" + \
+        self.msg_rule1 = "Le jeu commence avec un plateau vide. Les joueurs\n"+ \
+                    "placent à tour de rôle leurs pions sur un point  \n"     + \
+                    "libre du plateau. Pendant cette phase, il est    \n"     + \
+                    "interdit de déplacer les pions déjà placés sur   \n"     +\
+                    "le plateau.                                      \n"     + \
+                    "Si un joueur forme un moulin, il retire un pion  \n"     + \
                     "(en dehors d’un moulin éventuel) à son adversaire."
+                    
+        self.msg_rule2 = "Une fois tous les pions placés (18 pions), chaque\n" + \
+                    "joueur déplace à tour de rôle un de ses pions sur un\n"   + \
+                    "point adjacent libre d’une même ligne. Le but est de\n"   + \
+                    "faire des lignes de 3 pions de sa couleur pour enlever\n" + \
+                    "du plateau un pion de l’adversaire qui ne fait pas\n"     +\
+                    "partie d’un moulin (une ligne de 3 pions de son adversaire).\n\n" + \
+                    "Phase de déplacement puis suppression : Dès qu'un\n"      +\
+                    "joueur n'a plus que trois pions sur le plateau,\n"        + \
+                    "il déplace librement ses pions (un par un et dès qu’il\n" + \
+                    "s’agit de son tour de jeu) sur n'importe quel point\n"    + \
+                    "vide du plateau."
         
         self.width = width
         self.height = height
-
-        self.d = 25
-        self.psize = 5
-        self.num_pion = 9
-        self.x0, self.y0  = 0, 0
-        
-        self.color1 = 'blue'#'#1401A3'
-        self.color2 = 'red'#'#C10105'
+                
+        self.color1 = 'blue'
+        self.color2 = 'red'
         self.sa_pbg = sa_pbg
         
         line_width  = 2
-
         self.bg = bg
         self.pad = 9
         
@@ -465,23 +556,17 @@ class StatusArea(tk.Frame):
         self.spion = tk.IntVar()
         self.spion.set(1)
 
+        self.status_msg_rule = tk.StringVar()
+        self.status_msg_rule.set(self.msg_rule1)
+        
         self.status_tour = tk.StringVar()
         self.status_tour.set("C'est au tour de Joueur bleu")
 
         self.status_phase = tk.StringVar()
         self.status_phase.set("Première Phase")
 
-        self.rule_status = tk.StringVar()
-        self.rule_status.set("Règles du jeu")
-
-        self.rule_msg_status = tk.StringVar()
-        self.rule_msg_status.set(self.rule)
-
-        self.sa_selected_pion = tk.StringVar ()
-        self.sa_selected_pion.set("")
-
-        self.sa_start_second_part = tk.BooleanVar()
-        self.sa_start_second_part.set(False)
+        self.status_rule = tk.StringVar()
+        self.status_rule.set("Règles du jeu")
         
         height1 = 50
         height3 = 50
@@ -500,27 +585,19 @@ class StatusArea(tk.Frame):
         
         self.label = tk.Label(self.frame1, textvariable=self.status_phase,
                               foreground="black", background=bg,
-                              font='Terminal 13 bold')
-
-        self.label_status = tk.Label(self.frame1, textvariable=self.status_tour,
-                              foreground=self.color1, background=bg,
-                              font='Terminal 10 bold')
-
-        self.label_trule = tk.Label(self.frame21, textvariable=self.rule_status,
-                              foreground="black", background=bg,
                               font='Terminal 12 bold')
 
-        self.label_rule = tk.Label(self.frame21, textvariable=self.rule_msg_status,
+        self.label_status = tk.Label(self.frame1, textvariable=self.status_tour,
+                              foreground="#006400", background=bg,
+                              font='Terminal 11 bold')
+
+        self.label_trule = tk.Label(self.frame21, textvariable=self.status_rule,
                               foreground="black", background=bg,
-                              font='Terminal 10')
+                              font='Terminal 15 bold')
 
-        #self.label1 = tk.Label(self.frame21, text='Joueur 1',
-        #         foreground="white", background=self.color1,
-        #         font='Terminal 12 bold')
-
-        #self.label2 = tk.Label(self.frame22, text='Joueur 2',
-        #         foreground="white", background=self.color2,
-        #         font='Terminal 12 bold')
+        self.label_rule = tk.Label(self.frame21, textvariable=self.status_msg_rule,
+                              foreground="black", background=bg,
+                              font='Terminal 11')
         
         self.btn_quit = tk.Button(self.frame3, text ='Quitter',
                                   width=8,
@@ -553,10 +630,7 @@ class StatusArea(tk.Frame):
                                   command=self.parent.start_page)
         
         self.label.pack(side=tk.LEFT, padx=self.pad, pady=self.pad)
-        
-        #self.label1.pack(side=tk.LEFT, padx=self.pad, pady=1)
         self.label_status.pack(side=tk.RIGHT, padx=self.pad, pady=self.pad)
-        #self.label2.pack(side=tk.LEFT, padx=self.pad, pady=1)              
         
         self.btn_quit.pack(side=tk.LEFT, padx=self.pad, pady=self.pad)
         self.btn_about.pack(side=tk.LEFT, anchor='center', expand=True, padx=self.pad, pady=self.pad)
@@ -585,8 +659,9 @@ class StatusArea(tk.Frame):
         self.p28 = self.canvas.create_oval(415,  90, 440,  115,  width=line_width, fill=self.color2, outline=self.color2)
         self.p29 = self.canvas.create_oval(460,  90, 485,  115,  width=line_width, fill=self.color2, outline=self.color2)
         
-        #self.canvas.tag_bind(self.oval, self.tag, self.mouse_click)
-        
+        self.canvas.create_text(50, 53, text="Jouer 1", font='Terminal 13 bold')
+        self.canvas.create_text(50, 103, text="Jouer 2", font='Terminal 13 bold')
+                
         self.show_frame()
     
     def show_frame(self):
@@ -608,113 +683,11 @@ class StatusArea(tk.Frame):
                      "Aussi appelé jeu du charret (en Suisse), certains lui donnent le"
                      "nom médiéval de jeu de mérelles.")
 
-
-#-----------------------------------------------
-class Pion:
-    def __init__(self, pos=(0, 0), color=None):
-        self._pos     = pos
-        self._color   = color
-        self.is_moved = False
-
-    def move(self, npos):
-        ret = True if  self.pos != npos else False
-        self.pos = npos
-        self.is_moved = ret 
-        return ret
-    
-    @property
-    def pos(self):
-        return self._pos
-    
-    @pos.setter
-    def pos(self, value):
-        self._pos = value
-    
-    @property
-    def color(self):
-        return self._color
-    
-    @color.setter
-    def color(self, value):
-        self._color = value
-        
-    def __mul__(self, other):
-        return Pion()
-    
-    def __rmul__(self, other):
-        return Pion()
-        
-        
-class Case:
-    pos = ((1,1), (1,4), (1,7),
-           (2,2), (2,4), (2,6),
-           (3,3), (3,4), (3,5),
-           (4,1), (4,2), (4,3),
-           (4,5), (4,6), (4,7),
-           (5,3), (5,4), (5,5),
-           (6,2), (6,4), (6,6),
-           (7,1), (7,4), (7,7))
-    bpos = [x//x* False for x in range(1, len(pos)+1)]
-    def __init__(self):
-        
-        self._pion = None
-    
-    def check_pos(self, pos):
-        idx = Case.pos.index(pos)
-        if self.bpos[idx]:
-            return False
-        else:
-            Case.bpos[idx] = True
-            return True
-    
-    @property
-    def pion(self):
-        return self._pion
-    
-    @pion.setter
-    def pion(self, value):
-        if not isinstance(value, (type(None), Pion)):
-            raise TypeError('item is not of type')
-        if not None and value.pos not in Case.pos:
-            raise ValueError('Pion had invalid posion')
-        if not None and not self.check_pos(value.pos):
-            raise ValueError('Position has already pion')
-        self._pion = value
-        
-    def __str__(self):
-        pcolor = self.pion.color if self.pion else None
-        cpos   = self.pion.pos
-        return f'Case position is {cpos} and pion color is {pcolor}'
-       
-    def __mul__(self, other):
-        return Case()
-    
-    def __rmul__(self, other):
-        return Case()
-
-class Plateau:
-    def __init__(self):
-        self.tl_color = 'red'
-        self.tr_color = 'blue'
-        
-        self.field = [x//x * Case() for x in range(1, 19)]
-        
-        self.add2field()
-    
-    def add2field(self):
-        temp = list(Case().pos)
-        for i,v in enumerate(self.field):
-            color = self.tl_color if i < 8 else self.tr_color
-            p,c = random.choice(temp), color
-            v.pion = Pion(p, c)
-            del temp[temp.index(p)]
-            
-
 def run():
     root = tk.Tk()
     root.title("Moulin")
     Moulin(root).pack(fill="both", expand=True)
     root.mainloop()
             
-            
+#---------------------------------------------            
 if __name__ == '__main__': run()

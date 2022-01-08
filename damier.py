@@ -161,4 +161,3 @@ class Damier:
             return True
         print("Ce n'est pas à toi de jouer")
         return False
-
