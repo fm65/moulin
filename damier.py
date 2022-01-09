@@ -65,7 +65,7 @@ class Damier:
         return position_list
 
     def list_of_empty_linked_cell_for_player(self, player):
-        tab_cell = self.list_of_cells_for_player(player)
+        tab_cell = self.list_of_position_for_player()
         list_of_empty_linked_cell = []
         empty_position_list = self.get_empty_position_list()
         for cell in tab_cell:
