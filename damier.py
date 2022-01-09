@@ -55,7 +55,22 @@ class Damier:
 
     def get_empty_position_list(self):
         return list(filter(lambda position: self.get_cell(position).is_empty(), Damier.position_list))
-    
+
+    def list_of_cells_for_player(self, player):
+        tab_cell = self.get_cell_list_for_player(player)
+        return tab_cell
+
+    def list_of_empty_linked_cell_for_player(self, player):
+        tab_cell = self.list_of_cells_for_player(player)
+        list_of_empty_linked_cell = []
+        empty_position_list = self.get_empty_position_list()
+        for cell in tab_cell:
+            linked_cell = cell.get_linked_cells()
+            for cell2 in linked_cell:
+                if cell2 in empty_position_list:
+                    list_of_empty_linked_cell.append(cell2)
+        return list_of_empty_linked_cell
+
     def set_player_for_cell(self, position):
         cell = self.get_cell(position)
         player = self.get_current_player()

@@ -46,3 +46,10 @@ class Cell:
 
     def die(self):
         self.player = None
+
+    def is_my_player(self, player):
+        if player == self.player:
+            return True
+        else:
+            return False
+
