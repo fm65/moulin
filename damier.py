@@ -159,7 +159,7 @@ class Damier:
 
     def is_your_turn_to_play(self, color):
         if color == self.get_current_player().color:
-            print("C'est à toi de jouer")
+            #print("C'est à toi de jouer")
             return True
-        print("Ce n'est pas à toi de jouer")
+        #print("Ce n'est pas à toi de jouer")
         return False

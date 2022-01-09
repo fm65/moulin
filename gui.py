@@ -58,6 +58,12 @@ class Moulin(tk.Frame):
         self.parent.geometry(f'{self.width}x{self.height}')
         self.parent.resizable(0, 0)
         
+        self.ptype1 = tk.StringVar()
+        self.ptype1.set("human")
+        
+        self.ptype2 = tk.StringVar()
+        self.ptype2.set("computer")
+        
         self.is_phase_one = tk.BooleanVar()
         self.is_phase_one.set(False)
         
@@ -95,6 +101,10 @@ class Moulin(tk.Frame):
         self.dcoords_dict = {}
         self.pcoords_dict = {}
         
+        #print(self.ptype1.get())
+        #print(self.ptype2.get())
+        #print(self.is_phase_one.get())
+        
         for k,v in zip(self.ga_coords, field.position_list):
             self.dcoords_dict[str(k)] = v
             
@@ -114,30 +124,48 @@ class Moulin(tk.Frame):
         return False, None
         
     def on_click(self, event):
-        res = self.check_coords(self.ga.canvas, self.ga_coords, event)
-        self.current_color = field.get_current_player().get_color()
         
-        if self.is_phase_one.get(): #=====================PHASE 1=====================#          
-            if res[1]:
-                print("PHASE 1 | ", self.dcoords_dict[str(res[1])])
-                
-                if field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
-                   self.ga.canvas.itemcget(res[1], "fill") == "white":
-                    
-                    pcolor = "bleu" if not self.current_color == "blue" else "rouge"
-                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
-                    
-                    coords = self.dcoords_dict[str(res[1])]
-                    cell_selected = field.get_cell(coords)
-                    cell_selected.set_player(field.get_current_player())
+        if self.ptype1.get() == "human":
+            print("HUMAN", end=" ")
+        elif self.ptype1.get() == "computer":
+            print("COMPUTER", end=" ")
 
-                    if field.can_kill(cell_selected) and not self.is_moulin:
+        print("vs", end=" ")
+
+        if self.ptype2.get() == "human":
+            print("HUMAN")
+        elif self.ptype2.get() == "computer":
+            print("COMPUTER")
+
+        res = self.check_coords(self.ga.canvas, self.ga_coords, event)
+        if res[1]:
+            self.current_player  = field.get_current_player()
+            self.current_color   = field.get_current_player().get_color()
+            self.opposed_color   = field.get_not_current_player().get_color()
+            self.selected_color  = self.ga.canvas.itemcget(res[1], "fill")
+            self.selected_coords = self.dcoords_dict[str(res[1])]
+            self.selected_cell   = field.get_cell(self.selected_coords)
+            
+            print("CLICKEK | ", self.dcoords_dict[str(res[1])], "res:", res, "#is_moulin:", self.is_moulin)
+            print("#current_color:", self.current_color, "#opposed_color:", 
+                  self.opposed_color, "#selected_color:", self.selected_color)
+            
+            if self.is_phase_one.get():
+
+                print("=====================PHASE 1=====================")
+
+                if self.selected_color == "white" and not self.is_moulin:
+
+                    self.selected_cell.set_player(self.current_player)
+
+                    if field.can_kill(self.selected_cell) and not self.is_moulin:
+
                         pcolor = "bleu" if self.current_color == "blue" else "rouge"
                         self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
                         self.is_moulin = True
 
                     self.ga.canvas.itemconfig(res[1], fill=self.current_color, outline=self.current_color)
-                    
+
                     if self.current_color == "blue":
                         k = self.sa_coords1[self.dcount_pion1-1]
                         self.dcount_pion1 -=1
@@ -146,88 +174,138 @@ class Moulin(tk.Frame):
                         self.dcount_pion2 -=1
                     index = self.sa_coords[k-1]
                     self.sa.canvas.itemconfig(self.sa_coords[index-1], width=self.line_width, fill=self.sa_pbg, outline=self.sa_pbg)
-                    
-                    field.switch_player()
-                        
+
+                    if not self.is_moulin:
+                        field.switch_player()
+                        pcolor = "bleu" if not self.current_color == "blue" else "rouge"
+                        self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+
                     if self.dcount_pion2 == 0 and not self.is_moulin:
                         self.is_phase_one.set(False)
                         self.is_phase_two.set(True)
-                        self.sa.status_phase.set("Deuxième Phase")
-                        self.sa.status_msg_rule.set(self.sa.msg_rule2)
-                                                
-                elif self.ga.canvas.itemcget(res[1], "fill")\
-                     not in ("white", field.get_not_current_player().get_color())\
+                        self.is_finished = field.is_finished()
+                        if self.is_finished:
+                            print("==========THE WINER IS=========")
+                            print(self.current_player.get_color())
+                            print("===============================")
+                            pcolor = "bleu" if self.current_color == "blue" else "rouge"
+                            self.sa.status_tour.set("Le joueur " + pcolor + " a gagné !")
+                        else:
+                            self.sa.status_phase.set("Deuxième Phase")
+                            self.sa.status_msg_rule.set(self.sa.msg_rule2)
+
+                elif self.selected_color not in   \
+                     ("white", self.current_color)\
                      and self.is_moulin:
                     
-                    print("CLICKEK | ", self.dcoords_dict[str(res[1])])
-                    self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
-                    
+                    if field.kill_cell(self.selected_cell):
+                        self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
+                        pcolor = "bleu" if self.opposed_color == "blue" else "rouge"
+                        self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                        self.is_moulin = False
+                        field.switch_player()
+                        
+                        if self.dcount_pion2 == 0:
+                            self.is_phase_one.set(False)
+                            self.is_phase_two.set(True)
+                            self.is_finished = field.is_finished()
+                            if self.is_finished:
+                                print("==========THE WINER IS=========")
+                                print(self.current_player.get_color())
+                                print("===============================")
+                                pcolor = "bleu" if self.current_color == "blue" else "rouge"
+                                self.sa.status_tour.set("Le joueur " + pcolor + " a gagné !")
+                            else:
+                                self.sa.status_phase.set("Deuxième Phase")
+                                self.sa.status_msg_rule.set(self.sa.msg_rule2)
+                    else:
+                        print("***WARNING: You have to kill a pion")
+                        self.is_moulin = True
+
+                else: print("***WARNING1: invalid click")
+
+            elif self.is_phase_two.get() and field.is_your_turn_to_play(self.current_color):
+                
+                self.is_finished = field.is_finished()
+                if self.is_finished:
+                    print("==========THE WINER IS=========")
+                    print(self.current_player.get_color())
+                    print("===============================")
                     pcolor = "bleu" if self.current_color == "blue" else "rouge"
-                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
-                    self.is_moulin = False
-                
-                else: print("***WARNING2: invalid click", "#is_moulin:", self.is_moulin)
-            else: print("***WARNING1: invalid click")
-        
-        elif self.is_phase_two.get(): #=====================PHASE 2=====================#
-            if res[1]:
-                print("PHASE 2 | ", self.dcoords_dict[str(res[1])])
-                
-                if field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
-                   self.ga.canvas.itemcget(res[1], "fill") not in ("white", field.get_not_current_player().get_color()) and self.count_click == 0:
-                    
-                    print("CLICKEK | ", self.dcoords_dict[str(res[1])], "res:", res)
-                    self.src_coord = self.dcoords_dict[str(res[1])]
-                    self.src_color = self.ga.canvas.itemcget(res[1], "fill")
+                    self.sa.status_tour.set("Le joueur " + pcolor + " a gagné !")
+
+                print("=====================PHASE 2=====================")
+
+                if self.selected_color not in \
+                    ("white", self.opposed_color) and\
+                    self.count_click == 0 and\
+                    not self.is_moulin and\
+                    not self.is_finished:
+
+                    self.src_coord = self.selected_coords
+                    self.src_color = self.selected_color
                     self.src_res   = res
                     self.count_click +=1
-                
-                elif field.is_your_turn_to_play(self.current_color) and not self.is_moulin and\
-                   self.ga.canvas.itemcget(res[1], "fill") == "white" and self.count_click == 1:
-                    
-                    pcolor = "bleu" if not self.current_color == "blue" else "rouge"
-                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
-                    
-                    coords = self.dcoords_dict[str(res[1])]
+
+                elif self.selected_color == "white" and\
+                    not self.is_moulin and \
+                    self.count_click == 1 and\
+                    not self.is_finished:
+
                     src_coord = field.get_cell(self.src_coord)
-                    cell_selected = field.get_cell(coords)
-                    is_moved = field.can_move(src_coord, cell_selected)
+
                     
-                    print("\n@can_kill:", field.can_kill(cell_selected), " | @is_moved:", is_moved, " | @is_moulin:", self.is_moulin)
-                    if field.can_kill(cell_selected) and not self.is_moulin:
+
+                    if field.can_move(src_coord, self.selected_cell):
+                        field.move(src_coord, self.selected_cell)
+                        self.ga.canvas.itemconfig(self.src_res[1], fill="white", outline="black")
+                        self.ga.canvas.itemconfig(res[1], fill=self.src_color, outline=self.src_color)
+                        pcolor = "bleu" if not self.current_color == "blue" else "rouge"
+                        self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                        self.count_click = 0
+                        
+                        #print("#src_coord:", self.src_coord, " | #selected_cell:", self.selected_coords)
+                    else:
+                        self.count_click = 0
+                        print("#NOT MOVED | ", self.selected_coords)
+                
+                    print("\n@can_kill:", field.can_kill(self.selected_cell), " | @is_moulin:", self.is_moulin)
+                    if field.can_kill(self.selected_cell) and not self.is_moulin:
                         pcolor = "bleu" if self.src_color == "blue" else "rouge"
                         self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
                         self.is_moulin = True
-                        
-                    if is_moved:
-                        cell_selected.set_player(field.get_current_player())
-                        self.ga.canvas.itemconfig(self.src_res[1], fill="white", outline="black")
-                        self.ga.canvas.itemconfig(res[1], fill=self.src_color, outline=self.src_color)
-                        print("#cur_res:", res, "          | #current_color:", self.current_color)
-                        print("#src_res:", self.src_res, " | #src_color:", self.src_color)
-                        field.switch_player()
-                        self.count_click = 0
                     else:
+                        field.switch_player()
+
+                elif self.selected_color not in   \
+                     ("white", self.current_color)\
+                     and self.is_moulin\
+                        and not self.is_finished:
+                                        
+                    if field.kill_cell(self.selected_cell):
+                        self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
+                        self.is_finished = field.is_finished()
+                        if self.is_finished:
+                            print("==========THE WINER IS=========")
+                            print(self.current_player.get_color())
+                            print("===============================")
+                            pcolor = "bleu" if self.current_color == "blue" else "rouge"
+                            self.sa.status_tour.set("Le joueur " + pcolor + " a gagné !")
+                        else:
+                            pcolor = "bleu" if self.selected_color == "blue" else "rouge"
+                            self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
+                        self.is_moulin = False
+                        self.count_click = 0
+                        field.switch_player()
+                        print("#MOULIN | ", "You killed:", self.selected_coords)
+                    else:
+                        print("***WARNING: You have to kill a pion")
+                        self.is_moulin = True
                         self.count_click = 1
-                
-                elif self.ga.canvas.itemcget(res[1], "fill")\
-                     not in ("white", field.get_not_current_player().get_color())\
-                     and self.is_moulin:
-                    
-                    print("#MOULIN | ", self.dcoords_dict[str(res[1])])
-                    self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
-                    
-                    pcolor = "bleu" if self.current_color == "blue" else "rouge"
-                    self.sa.status_tour.set("C'est au tour de joueur " + pcolor)
-                    
-                    self.is_moulin = False
-                    self.count_click = 0
-                    
-                else:
-                    print("***WARNING3: invalid click")
-                    print("current_color:", self.current_color)
-        
-        else: print("***WARNING4: invalid click")
+
+                else: print("***WARNING2: invalid click")
+                        
+        else: print("***WARNING3: invalid click")
         print_field(field)
             
    
@@ -250,12 +328,11 @@ class Moulin(tk.Frame):
         self.full_screen_state = False
         self.parent.attributes("-fullscreen", self.full_screen_state)
         
-    
+
 class StartPage(tk.Toplevel):
     def __init__(self, parent, width=100, height=50,  bg='white', bd=5, *args, **kwargs):
         tk.Toplevel.__init__(self, parent, width=width, height=height, bg=bg, *args, **kwargs)
-        self.parent = parent
-        
+        self.parent = parent        
         self.bg = bg
         
         width  = width  // 3
@@ -275,6 +352,9 @@ class StartPage(tk.Toplevel):
         height1 = 50
         height3 = 50
         height2 = height - (height1+height3)
+        
+        self.is_human1 = tk.IntVar(value=1)
+        self.is_human2 = tk.IntVar()
         
         self.is_human1 = tk.IntVar(value=1)
         self.is_human2 = tk.IntVar()
@@ -337,13 +417,15 @@ class StartPage(tk.Toplevel):
         
         self.show_frame()
         
-        self.state1 = (self.is_human1.get(), self.is_computer1.get())
-        self.state2 = (self.is_human2.get(), self.is_computer2.get())
+        self.player1_type = (self.is_human1.get(), self.is_computer1.get())
+        self.player2_type = (self.is_human2.get(), self.is_computer2.get())
                 
         self.bind("<Button-1>", self.on_checkbutton)
         
     def start_play(self):
         self.parent.is_phase_one.set(True)
+        self.parent.ptype1.set(self.get_player_type(1))
+        self.parent.ptype2.set(self.get_player_type(2))
         self.destroy()
         
     def show_frame(self):
@@ -403,33 +485,41 @@ class StartPage(tk.Toplevel):
         
     def on_checkbutton(self, event=None):
         #==========Player 1============#
-        if self.state1[0] != self.is_human1.get() and\
-           self.state1[1] == self.is_computer1.get():
+        if self.player1_type[0] != self.is_human1.get() and\
+           self.player1_type[1] == self.is_computer1.get():
             self.is_human1.set(1)
             self.is_computer1.set(0)
             
-        if self.state1[0] == self.is_human1.get() and\
-           self.state1[1] != self.is_computer1.get():
+        if self.player1_type[0] == self.is_human1.get() and\
+           self.player1_type[1] != self.is_computer1.get():
             self.is_human1.set(0)
             self.is_computer1.set(1)
         
         #==========Player 2============#    
-        if self.state2[0] != self.is_human2.get() and\
-           self.state2[1] == self.is_computer2.get():
+        if self.player2_type[0] != self.is_human2.get() and\
+           self.player2_type[1] == self.is_computer2.get():
             self.is_human2.set(1)
             self.is_computer2.set(0)
         
-        if self.state2[0] == self.is_human2.get() and\
-           self.state2[1] != self.is_computer2.get():
+        if self.player2_type[0] == self.is_human2.get() and\
+           self.player2_type[1] != self.is_computer2.get():
             self.is_human2.set(0)
             self.is_computer2.set(1)
             
-        self.state1 = (self.is_human1.get(), self.is_computer1.get())
-        self.state2 = (self.is_human2.get(), self.is_computer2.get())
+        self.player1_type = (self.is_human1.get(), self.is_computer1.get())
+        self.player2_type = (self.is_human2.get(), self.is_computer2.get())
     
     def close(self):
         self.destroy()
         self.parent.quit()
+        
+    def get_player_type(self, p):
+        if p == 1:
+            return "human" if self.player1_type[0] == 1 else "computer"  
+        elif p == 2:
+            return "human" if self.player2_type[0] == 1 else "computer" 
+        else:
+            raise ValueError(f"{p}: invalide player number, shoud be 1 or 2")
 
         
 class GameArea(tk.Frame):
@@ -665,11 +755,12 @@ class StatusArea(tk.Frame):
                      "Aussi appelé jeu du charret (en Suisse), certains lui donnent le"
                      "nom médiéval de jeu de mérelles.")
 
+
 def run():
     root = tk.Tk()
     root.title("Moulin")
     Moulin(root).pack(fill="both", expand=True)
     root.mainloop()
-            
+    
 #---------------------------------------------            
 if __name__ == '__main__': run()
