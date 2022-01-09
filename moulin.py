@@ -155,7 +155,7 @@ while not field.is_finished():
     field.want_to_save()
 
 field.switch_player()
-print("Félicitation au Joueur {} pour avoir remporté la partie !".format(field.get_current_player().color))
+print("Félicitation au Joueur {} pour avoir remporté la partie !".format(field.get_current_player().get_color()))
 
 
 if __name__ == '__main__':
