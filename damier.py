@@ -93,6 +93,12 @@ class Damier:
         new_cell.set_player(cell.get_player())
         cell.set_player(None)
 
+    def cell_can_move(self, cell):
+        if cell.is_movable():
+            return True
+        else:
+            return False
+
     def can_move(self, cell, new_cell):
         if not new_cell.is_empty():
             return False

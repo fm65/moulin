@@ -240,7 +240,8 @@ class Moulin(tk.Frame):
                     ("white", self.opposed_color) and\
                     self.count_click == 0 and\
                     not self.is_moulin and\
-                    not self.is_finished:
+                    not self.is_finished and\
+                    field.cell_can_move(self.selected_cell):
 
                     self.src_coord = self.selected_coords
                     self.src_color = self.selected_color
@@ -253,8 +254,6 @@ class Moulin(tk.Frame):
                     not self.is_finished:
 
                     src_coord = field.get_cell(self.src_coord)
-
-                    
 
                     if field.can_move(src_coord, self.selected_cell):
                         field.move(src_coord, self.selected_cell)
@@ -269,7 +268,7 @@ class Moulin(tk.Frame):
                         self.count_click = 0
                         print("#NOT MOVED | ", self.selected_coords)
                 
-                    print("\n@can_kill:", field.can_kill(self.selected_cell), " | @is_moulin:", self.is_moulin)
+                    print("\n@can_kill:", field.can_kill(self.selected_cell), self.selected_cell.position, " | @is_moulin:", self.is_moulin)
                     if field.can_kill(self.selected_cell) and not self.is_moulin:
                         pcolor = "bleu" if self.src_color == "blue" else "rouge"
                         self.sa.status_tour.set("Le joueur " + pcolor + " a fait un moulin")
