@@ -18,9 +18,9 @@ empty_game = ["╔═══════╗",
 def get_player_symbol(player):
     if player is None:
         return "◯"
-    if player.get_color() == "Rouge":
+    if player.get_color() == "blue":
         return "①"
-    if player.get_color() == "Bleu":
+    if player.get_color() == "red":
         return "②"
 
 
@@ -30,7 +30,6 @@ def print_field(field):
         player = field.get_cell(position).get_player()
         tmp_list = list(to_print[position[0]])
         tmp_list[position[1]] = get_player_symbol(player)
-        print(to_print)
         to_print[position[0]] = "".join(tmp_list)
     for line in to_print:
         print(line)
@@ -64,11 +63,10 @@ def player_did_moulin(field : Damier):
         if cell_kill.get_player() == field.get_current_player():
             print(Translation.get_translation("playerdidmoulin.cell.yours"))
             continue
-        if field.is_in_moulins(cell_kill):
+        if not field.can_get_killed(cell_kill):
             print(Translation.get_translation("playerdidmoulin.cell.in.moulin"))
             continue
         field.kill_cell(cell_kill)
-        field.switch_player()
         break
 
 
