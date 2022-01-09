@@ -2,6 +2,7 @@ from player import *
 from cell import *
 import pickle
 
+
 class Damier:
 
     list_of_moulin = [[(1, 1), (1, 4), (1, 7)], [(2, 2), (2, 4), (2, 6)], [(3, 3), (3, 4), (3, 5)],
@@ -57,8 +58,11 @@ class Damier:
         return list(filter(lambda position: self.get_cell(position).is_empty(), Damier.position_list))
 
     def list_of_cells_for_player(self, player):
+        position_list = []
         tab_cell = self.get_cell_list_for_player(player)
-        return tab_cell
+        for cell in tab_cell:
+            position_list.append(cell.get_position())
+        return position_list
 
     def list_of_empty_linked_cell_for_player(self, player):
         tab_cell = self.list_of_cells_for_player(player)
