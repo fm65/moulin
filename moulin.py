@@ -105,9 +105,6 @@ while nb_turn != number_of_pion_needed and field.phase1 is True:
     nb_turn += 1
     print_field(field)
     print("C'est au joueur {} de jouer !\n".format(field.get_current_player().color))
-    print(field.list_of_position_for_player(field.get_current_player()))
-    print(field.get_empty_position_list())
-    print(field.list_of_empty_linked_cell_for_player(field.get_current_player()))
     try:
         chosen_cell = request_cell_from_field(field, Translation.get_translation("put.pion"))
     except Exception as ex:
