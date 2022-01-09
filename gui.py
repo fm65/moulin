@@ -33,7 +33,6 @@ def get_player_symbol(player):
 def print_field(field):
     to_print = empty_game
     for position in damier.Damier.position_list:
-        #print("c:", c)
         player = field.get_cell(position).get_player()
         tmp_list = list(to_print[position[0]])
         tmp_list[position[1]] = get_player_symbol(player)
@@ -146,9 +145,9 @@ class Moulin(tk.Frame):
             self.selected_coords = self.dcoords_dict[str(res[1])]
             self.selected_cell   = field.get_cell(self.selected_coords)
             
-            print("CLICKEK | ", self.dcoords_dict[str(res[1])], "res:", res, "#is_moulin:", self.is_moulin)
-            print("#current_color:", self.current_color, "#opposed_color:", 
-                  self.opposed_color, "#selected_color:", self.selected_color)
+            #print("CLICKEK | ", self.dcoords_dict[str(res[1])], "res:", res, "#is_moulin:", self.is_moulin)
+            #print("#current_color:", self.current_color, "#opposed_color:", 
+            #      self.opposed_color, "#selected_color:", self.selected_color)
             
             if self.is_phase_one.get():
 
@@ -185,7 +184,7 @@ class Moulin(tk.Frame):
                         self.is_phase_two.set(True)
                         self.is_finished = field.is_finished()
                         if self.is_finished:
-                            print("==========THE WINER IS=========")
+                            print("==========THE WINNER IS=========")
                             print(self.current_player.get_color())
                             print("===============================")
                             pcolor = "bleu" if self.current_color == "blue" else "rouge"
@@ -210,7 +209,7 @@ class Moulin(tk.Frame):
                             self.is_phase_two.set(True)
                             self.is_finished = field.is_finished()
                             if self.is_finished:
-                                print("==========THE WINER IS=========")
+                                print("==========THE WINNER IS=========")
                                 print(self.current_player.get_color())
                                 print("===============================")
                                 pcolor = "bleu" if self.current_color == "blue" else "rouge"
@@ -228,7 +227,7 @@ class Moulin(tk.Frame):
                 
                 self.is_finished = field.is_finished()
                 if self.is_finished:
-                    print("==========THE WINER IS=========")
+                    print("==========THE WINNER IS=========")
                     print(self.current_player.get_color())
                     print("===============================")
                     pcolor = "bleu" if self.current_color == "blue" else "rouge"
@@ -245,8 +244,11 @@ class Moulin(tk.Frame):
 
                     self.src_coord = self.selected_coords
                     self.src_color = self.selected_color
+                    self.src_selected_cell = field.get_cell(self.src_coord)
                     self.src_res   = res
                     self.count_click +=1
+                    
+                    print("@src_selected_cell:", self.src_selected_cell)
 
                 elif self.selected_color == "white" and\
                     not self.is_moulin and \
@@ -285,7 +287,7 @@ class Moulin(tk.Frame):
                         self.ga.canvas.itemconfig(res[1], fill="white", outline="black")
                         self.is_finished = field.is_finished()
                         if self.is_finished:
-                            print("==========THE WINER IS=========")
+                            print("==========THE WINNER IS=========")
                             print(self.current_player.get_color())
                             print("===============================")
                             pcolor = "bleu" if self.current_color == "blue" else "rouge"
@@ -327,6 +329,12 @@ class Moulin(tk.Frame):
         self.full_screen_state = False
         self.parent.attributes("-fullscreen", self.full_screen_state)
         
+    def winner(self):
+        messagebox.showinfo('Fin de la partie',
+             message="Résultat :\n\n"
+                     f"Joueur {self.current_color} a gagné !\n\n"
+                     "Durée de la partie :\n\n"
+                     f"{self.time_game}")
 
 class StartPage(tk.Toplevel):
     def __init__(self, parent, width=100, height=50,  bg='white', bd=5, *args, **kwargs):
@@ -494,7 +502,7 @@ class StartPage(tk.Toplevel):
             self.is_human1.set(0)
             self.is_computer1.set(1)
         
-        #==========Player 2============#    
+        #==========Player 2============#
         if self.player2_type[0] != self.is_human2.get() and\
            self.player2_type[1] == self.is_computer2.get():
             self.is_human2.set(1)
